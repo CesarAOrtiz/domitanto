@@ -75,9 +75,9 @@ describe('migraciones', () => {
     await driver.run("INSERT INTO app_settings (key, value) VALUES ('tema', 'oscuro')");
     const next = [
       ...MIGRATIONS,
-      { version: 2, name: 'prueba', sql: 'ALTER TABLE app_settings ADD COLUMN updated_at INTEGER;' },
+      { version: MIGRATIONS.length + 1, name: 'prueba', sql: 'ALTER TABLE app_settings ADD COLUMN updated_at INTEGER;' },
     ];
-    expect(await migrate(driver, next)).toBe(2);
+    expect(await migrate(driver, next)).toBe(MIGRATIONS.length + 1);
     const row = await driver.first<{ value: string }>("SELECT value FROM app_settings WHERE key = 'tema'");
     expect(row?.value).toBe('oscuro');
   });
@@ -88,10 +88,14 @@ describe('migraciones', () => {
     await driver.run("INSERT INTO app_settings (key, value) VALUES ('k', 'v')");
     const broken = [
       ...MIGRATIONS,
-      { version: 2, name: 'rota', sql: 'CREATE TABLE nueva (id TEXT); INSERT INTO tabla_inexistente VALUES (1);' },
+      {
+        version: MIGRATIONS.length + 1,
+        name: 'rota',
+        sql: 'CREATE TABLE nueva (id TEXT); INSERT INTO tabla_inexistente VALUES (1);',
+      },
     ];
     await expect(migrate(driver, broken)).rejects.toBeInstanceOf(MigrationError);
-    expect(await currentSchemaVersion(driver)).toBe(1);
+    expect(await currentSchemaVersion(driver)).toBe(MIGRATIONS.length);
     const table = await driver.first("SELECT name FROM sqlite_master WHERE name = 'nueva'");
     expect(table).toBeNull();
     expect(await countRows(driver, 'app_settings')).toBe(1);

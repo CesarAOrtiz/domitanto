@@ -8,10 +8,12 @@ import { loadSettings, type AppSettings } from '../data/settingsRepository';
 import { setHapticsEnabled } from '../platform/haptics';
 import { systemClock, uuidSource } from '../platform/ids';
 import { GameService } from './gameService';
+import { PeopleService } from './peopleService';
 import { createSettingsStore, type SettingsStore } from './settingsStore';
 
 export interface Services {
   games: GameService;
+  people: PeopleService;
   settings: SettingsStore;
   newCommandId: () => string;
 }
@@ -36,6 +38,7 @@ export async function bootServices(): Promise<Services> {
   settings.subscribe(() => setHapticsEnabled(settings.get().haptics));
   return {
     games: new GameService(driver, systemClock, uuidSource),
+    people: new PeopleService(driver, systemClock, uuidSource),
     settings,
     newCommandId: () => uuidSource.newId(),
   };

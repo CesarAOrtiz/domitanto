@@ -12,6 +12,10 @@ export const settingsSchema = z.object({
   appearance: z.enum(['system', 'light', 'dark']),
   tableKeepAwake: z.boolean(),
   tableMirror: z.boolean(),
+  /** Guías breves ya cerradas por el usuario (p. ej. «grupos»). */
+  guidesSeen: z.array(z.string().max(40)).max(50),
+  /** Guardar como jugadores los nombres nuevos que se escriben al armar una partida. */
+  saveNewNames: z.boolean(),
 });
 
 export type AppSettings = z.infer<typeof settingsSchema>;
@@ -22,6 +26,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   appearance: 'system',
   tableKeepAwake: true,
   tableMirror: false,
+  guidesSeen: [],
+  saveNewNames: true,
 };
 
 const KEY = 'preferences';

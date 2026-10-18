@@ -14,6 +14,8 @@ import {
 export interface ParticipantInput {
   playerId?: string | null;
   displayName?: string;
+  /** Guardar este nombre como jugador nuevo al crear la partida (si no trae `playerId`). */
+  register?: boolean;
 }
 
 export interface SideInput {

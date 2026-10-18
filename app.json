@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "La Mesa",
+    "slug": "la-mesa",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.lamesa.apunte"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#F6F4EF",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.lamesa.apunte"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-font",
+      "expo-asset",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F6F4EF",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 160,
+          "dark": {
+            "backgroundColor": "#101820"
+          }
+        }
+      ]
+    ],
+    "scheme": "lamesa",
+    "backgroundColor": "#F6F4EF",
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

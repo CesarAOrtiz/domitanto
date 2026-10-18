@@ -1,0 +1,89 @@
+import { Inter_400Regular } from '@expo-google-fonts/inter/400Regular';
+import { Inter_500Medium } from '@expo-google-fonts/inter/500Medium';
+import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
+import { Inter_700Bold } from '@expo-google-fonts/inter/700Bold';
+import { SpaceGrotesk_500Medium } from '@expo-google-fonts/space-grotesk/500Medium';
+import { SpaceGrotesk_700Bold } from '@expo-google-fonts/space-grotesk/700Bold';
+import { useFonts } from 'expo-font';
+import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+import { ServicesProvider, useBoot } from '../application/services';
+import { AppText } from '../ui/components/AppText';
+import { Button } from '../ui/components/Button';
+import { DominoMark } from '../ui/components/DominoMark';
+import { ThemeProvider, useTheme } from '../ui/theme';
+import { space } from '../ui/tokens';
+
+SplashScreen.preventAutoHideAsync().catch(() => undefined);
+
+function Root() {
+  const { colors } = useTheme();
+  const [boot, retry] = useBoot();
+  const [fontsLoaded, fontError] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    SpaceGrotesk_500Medium,
+    SpaceGrotesk_700Bold,
+  });
+  const fontsReady = fontsLoaded || !!fontError;
+
+  useEffect(() => {
+    if (fontsReady && boot.status !== 'loading') SplashScreen.hideAsync().catch(() => undefined);
+  }, [fontsReady, boot.status]);
+
+  if (!fontsReady || boot.status === 'loading') return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
+
+  if (boot.status === 'error') {
+    return (
+      <View style={[styles.fatal, { backgroundColor: colors.bg }]}>
+        <DominoMark top={0} bottom={0} size={28} />
+        <AppText variant="heading">No se pudo abrir el apunte</AppText>
+        <AppText muted>
+          La base de datos de este teléfono no se pudo preparar. No se borró nada: tus partidas siguen guardadas.
+        </AppText>
+        <AppText variant="caption" muted selectable>
+          {boot.message}
+        </AppText>
+        <Button label="Reintentar" onPress={retry} />
+      </View>
+    );
+  }
+
+  return (
+    <ServicesProvider services={boot.services}>
+      <StatusBar style={colors.scheme === 'dark' ? 'light' : 'dark'} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.bg },
+        }}
+      >
+        <Stack.Screen name="index" />
+        <Stack.Screen name="nueva" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="partida/[id]" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="resultado/[id]" options={{ gestureEnabled: false }} />
+      </Stack>
+    </ServicesProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <Root />
+      </ThemeProvider>
+    </SafeAreaProvider>
+  );
+}
+
+const styles = StyleSheet.create({
+  fatal: { flex: 1, justifyContent: 'center', padding: space.xl, gap: space.md },
+});

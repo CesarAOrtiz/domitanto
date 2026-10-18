@@ -302,6 +302,11 @@ export async function insertGameOperation(
   );
 }
 
+/** Borra la partida; lados, apuntes, revisiones y operaciones caen en cascada. */
+export async function deleteGame(db: SqlExecutor, gameId: string): Promise<void> {
+  await db.run('DELETE FROM games WHERE id = ?', [gameId]);
+}
+
 export async function listGames(db: SqlExecutor, limit = 20): Promise<GameSummary[]> {
   const rows = await db.all<GameRow>('SELECT * FROM games ORDER BY started_at DESC, rowid DESC LIMIT ?', [limit]);
   return rows.map((g) => ({

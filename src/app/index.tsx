@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { ActiveGameExistsError, type GameSnapshot } from '../application/gameService';
 import { useServices } from '../application/services';
@@ -226,7 +226,16 @@ function RecentRow({ snapshot }: { snapshot: GameSnapshot }) {
   const abandoned = state.status === 'abandoned';
   const duration = durationLabel(state.startedAt, state.endedAt);
   return (
-    <View style={[styles.recent, { backgroundColor: colors.surface, borderColor: colors.hairline }]}>
+    <Pressable
+      testID={`recent-${state.id}`}
+      accessibilityRole="button"
+      accessibilityHint="Abre el resultado de la partida"
+      onPress={() => router.push(`/resultado/${state.id}`)}
+      style={({ pressed }) => [
+        styles.recent,
+        { backgroundColor: pressed ? colors.hairline : colors.surface, borderColor: colors.hairline },
+      ]}
+    >
       {winner ? <TeamBadge position={winner.position} size={26} /> : <DominoMark top={0} bottom={0} size={10} />}
       <View style={styles.flex}>
         <AppText variant="bodyStrong" numberOfLines={1}>
@@ -240,7 +249,7 @@ function RecentRow({ snapshot }: { snapshot: GameSnapshot }) {
       <AppText variant="heading" tabular>
         {scoreline(state, outcome)}
       </AppText>
-    </View>
+    </Pressable>
   );
 }
 

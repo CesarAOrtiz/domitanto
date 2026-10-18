@@ -303,6 +303,18 @@ describe('servicio de partida sobre SQLite real', () => {
     await expect(service.execute(gameId, hand(A, 10))).rejects.toThrow(/abandonada/);
   });
 
+  test('borrar una partida cerrada elimina sus apuntes; una activa no se borra', async () => {
+    const { driver, service } = await setup();
+    const { gameId } = await exampleGame(service);
+    await expect(service.deleteGame(gameId)).rejects.toThrow(/abandona/);
+    await service.abandon(gameId, cmd());
+    await service.deleteGame(gameId);
+    expect(await loadGame(driver, gameId)).toBeNull();
+    for (const table of ['games', 'game_sides', 'score_entries', 'score_entry_revisions', 'operations']) {
+      expect(await countRows(driver, table)).toBe(0);
+    }
+  });
+
   test('loadGame devuelve null para una partida inexistente', async () => {
     const { driver } = await setup();
     expect(await loadGame(driver, 'no-existe')).toBeNull();

@@ -12,6 +12,7 @@ import {
 } from '../domain';
 import type { SqlDriver } from '../data/driver';
 import {
+  deleteGame,
   findActiveGameId,
   findOperation,
   insertGame,
@@ -125,6 +126,16 @@ export class GameService {
       const now = this.clock.now();
       await updateGameHeader(tx, { id: gameId, status: 'abandoned', endedAt: now, revision: state.revision + 1 }, null);
       await insertGameOperation(tx, commandId, gameId, 'abandon_game', {}, now);
+    });
+  }
+
+  /** Borra una partida cerrada con todos sus apuntes. Una partida activa se abandona antes. */
+  async deleteGame(gameId: string): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const state = await loadGame(tx, gameId);
+      if (!state) return;
+      if (state.status === 'active') throw new Error('Termina o abandona la partida antes de borrarla.');
+      await deleteGame(tx, gameId);
     });
   }
 

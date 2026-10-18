@@ -1,7 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import { Alert, Animated, StyleSheet, View } from 'react-native';
 
 import type { GameSnapshot } from '../../application/gameService';
 import { useServices } from '../../application/services';
@@ -58,6 +58,24 @@ export default function ResultScreen() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const remove = () => {
+    Alert.alert('¿Borrar la partida?', 'Se borran el resultado y todas sus manos. No se puede deshacer.', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Borrar',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await games.deleteGame(state.id);
+            router.replace('/');
+          } catch (e) {
+            setError(storageMessage(e));
+          }
+        },
+      },
+    ]);
   };
 
   const facts = [
@@ -125,7 +143,9 @@ export default function ResultScreen() {
           </Surface>
         </Animated.View>
       ) : (
-        <AppText variant="title">Sin ganador</AppText>
+        <AppText variant="title" accessibilityRole="header">
+          {state.status === 'abandoned' ? 'Partida abandonada' : 'Sin ganador'}
+        </AppText>
       )}
 
       <View style={styles.table}>
@@ -162,6 +182,7 @@ export default function ResultScreen() {
       </View>
 
       <Button tone="ghost" label="Ver el apunte completo" onPress={() => router.replace(`/partida/${state.id}`)} />
+      <Button testID="delete-game" tone="danger" label="Borrar partida" onPress={remove} disabled={busy} />
       {error ? <AppText color={colors.danger}>{error}</AppText> : null}
     </Screen>
   );

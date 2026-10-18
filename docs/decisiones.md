@@ -52,3 +52,12 @@ Las tablas comerciales (derechos de Plus, exposición y elegibilidad de anuncios
 - **Estadísticas** (`src/domain/stats.ts`): puras, recalculadas desde `games.winner_side_id` y los participantes en cada consulta, así que siempre reflejan correcciones. Victoria = integrar el lado ganador de una partida terminada; abandonadas y activas no cuentan; cero partidas no se muestra como 0 %; toda cifra lleva su denominador («1 de 2»). Pareja exacta por `composition_key`.
 - **Guías.** Cada pantalla nueva muestra una tarjeta breve la primera vez; «Entendido» la cierra (se guarda en `guidesSeen`) y el botón «?» la vuelve a abrir.
 - **Migración 2:** solo índices (`game_participants.player_id`, `games.session_id`, `group_members.player_id`, `sessions.started_at`). Las tablas ya venían de la migración 1.
+
+## Etapa 4 (compartir, Plus y anuncios)
+
+- **Compartir resultado.** La tarjeta se dibuja con colores fijos (no depende del tema del teléfono) a 360 px lógicos y se captura con `react-native-view-shot` a 1080×1350 (publicación) o 1080×1920 (historia); `expo-sharing` abre la hoja del sistema. «Ocultar nombres» cambia los nombres por «Equipo A/B». Nada sale del teléfono hasta que la persona elige dónde compartir.
+- **Plus de pago único** con RevenueCat (`react-native-purchases`, entitlement `plus`). El acceso solo lo concede la tienda: activo → `plus`; existió y ya no (reembolso) → `revoked`; sin compra → `free`. Cancelada o pendiente no conceden nada. Lo validado se guarda en `commerce_state` (migración 3) para que Plus siga activo sin conexión; una preferencia local nunca concede Plus.
+- **Revocar no borra.** Si Plus se revoca vuelven los anuncios y el tema clásico, pero el tema elegido y todas las partidas se conservan.
+- **Anuncios** (`react-native-google-mobile-ads`): solo un banner al final de Inicio, solo con acceso `free` o `revoked` (nunca con `unknown`, para no mostrar anuncios a quien pagó mientras se valida). Antes se pide consentimiento con UMP; si falla o no hay ID de banner en producción, no se muestra nada. Nunca en partida, modo mesa ni resultado.
+- **Expo Go y web.** Compras y anuncios necesitan módulos nativos: en Expo Go y web la pantalla Plus lo explica y no hay banners. Las claves de RevenueCat y los IDs de banner van en `app.json` → `extra.commerce`; los `androidAppId`/`iosAppId` del plugin son los de ejemplo de Google y deben cambiarse antes de publicar.
+- **Extras de Plus:** temas Malecón, Cacao y Flamboyán (todos pasan las pruebas de contraste AA en claro y oscuro) y plantillas Pizarra y Carnaval para la tarjeta.

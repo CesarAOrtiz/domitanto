@@ -12,6 +12,7 @@ import { durationLabel, scoreline, storageMessage, whenLabel } from '../features
 import { plural } from '../features/people/format';
 import { hapticTap } from '../platform/haptics';
 import { AppText } from '../ui/components/AppText';
+import { AdSlot } from '../ui/components/AdSlot';
 import { Button } from '../ui/components/Button';
 import { DominoMark } from '../ui/components/DominoMark';
 import { IconButton } from '../ui/components/IconButton';
@@ -222,6 +223,8 @@ export default function Home() {
           testID="open-players"
         />
       </View>
+
+      <AdSlot />
     </Screen>
   );
 }

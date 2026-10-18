@@ -120,6 +120,18 @@ CREATE INDEX group_members_player ON group_members(player_id);
 CREATE INDEX sessions_started ON sessions(started_at);
 `,
   },
+  {
+    version: 3,
+    name: 'estado_comercial',
+    // Separada de partidas y ajustes: nunca entra en un respaldo ni se importa.
+    sql: `
+CREATE TABLE commerce_state (
+  key TEXT PRIMARY KEY NOT NULL,
+  value TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+`,
+  },
 ];
 
 export class MigrationError extends Error {

@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, useColorScheme } from 'react-native';
 
-import { dark, light, type Palette } from './tokens';
+import { dark, light, themedPalette, type Palette, type ThemeId } from './tokens';
 
 interface Theme {
   colors: Palette;
@@ -12,7 +12,15 @@ const ThemeContext = createContext<Theme>({ colors: light, reduceMotion: false }
 
 export type Appearance = 'system' | 'light' | 'dark';
 
-export function ThemeProvider({ children, appearance = 'system' }: { children: ReactNode; appearance?: Appearance }) {
+export function ThemeProvider({
+  children,
+  appearance = 'system',
+  theme = 'clasico',
+}: {
+  children: ReactNode;
+  appearance?: Appearance;
+  theme?: ThemeId;
+}) {
   const system = useColorScheme();
   const scheme = appearance === 'system' ? system : appearance;
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -30,7 +38,7 @@ export function ThemeProvider({ children, appearance = 'system' }: { children: R
   }, []);
 
   return (
-    <ThemeContext.Provider value={{ colors: scheme === 'dark' ? dark : light, reduceMotion }}>
+    <ThemeContext.Provider value={{ colors: themedPalette(scheme === 'dark' ? dark : light, theme), reduceMotion }}>
       {children}
     </ThemeContext.Provider>
   );

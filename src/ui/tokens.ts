@@ -120,3 +120,86 @@ export function scoreFontSize(base: number, value: number): number {
   const factor = digits <= 2 ? 1 : digits === 3 ? 0.72 : 0.55;
   return Math.round(base * factor);
 }
+
+/** Temas de color. «Clásico» es gratis; los demás son extras de Plus. */
+export type ThemeId = 'clasico' | 'malecon' | 'cacao' | 'flamboyan';
+
+type ThemeOverride = Pick<
+  Palette,
+  'bg' | 'surface' | 'surfaceAlt' | 'hairline' | 'keypad' | 'keypadPressed' | 'primaryShadow'
+>;
+
+export const THEMES: { id: ThemeId; label: string; description: string; plus: boolean; swatch: string }[] = [
+  { id: 'clasico', label: 'Clásico', description: 'Marfil y cobalto', plus: false, swatch: '#2457D6' },
+  { id: 'malecon', label: 'Malecón', description: 'Mar y brisa', plus: true, swatch: '#0F7C78' },
+  { id: 'cacao', label: 'Cacao', description: 'Tierra tostada', plus: true, swatch: '#9A5B2E' },
+  { id: 'flamboyan', label: 'Flamboyán', description: 'Rojo de verano', plus: true, swatch: '#C2352B' },
+];
+
+const OVERRIDES: Record<Exclude<ThemeId, 'clasico'>, { light: ThemeOverride; dark: ThemeOverride }> = {
+  malecon: {
+    light: {
+      bg: '#EEF5F3',
+      surface: '#FFFFFF',
+      surfaceAlt: '#DDEBE8',
+      hairline: '#CFE0DC',
+      keypad: '#DDEBE8',
+      keypadPressed: '#C8DDD9',
+      primaryShadow: '#0F7C78',
+    },
+    dark: {
+      bg: '#0C1B1D',
+      surface: '#14292C',
+      surfaceAlt: '#1B3538',
+      hairline: '#24413F',
+      keypad: '#1B3538',
+      keypadPressed: '#244447',
+      primaryShadow: '#14A39D',
+    },
+  },
+  cacao: {
+    light: {
+      bg: '#F7F0E7',
+      surface: '#FFFFFF',
+      surfaceAlt: '#EDE1D2',
+      hairline: '#E2D3C1',
+      keypad: '#EDE1D2',
+      keypadPressed: '#E0CFBA',
+      primaryShadow: '#9A5B2E',
+    },
+    dark: {
+      bg: '#19130F',
+      surface: '#241B15',
+      surfaceAlt: '#2E231B',
+      hairline: '#3A2D23',
+      keypad: '#2E231B',
+      keypadPressed: '#3A2D23',
+      primaryShadow: '#C27A43',
+    },
+  },
+  flamboyan: {
+    light: {
+      bg: '#FBF0EE',
+      surface: '#FFFFFF',
+      surfaceAlt: '#F3DFDB',
+      hairline: '#EBD0CA',
+      keypad: '#F3DFDB',
+      keypadPressed: '#EACAC3',
+      primaryShadow: '#C2352B',
+    },
+    dark: {
+      bg: '#1B1113',
+      surface: '#28191C',
+      surfaceAlt: '#332125',
+      hairline: '#402A2E',
+      keypad: '#332125',
+      keypadPressed: '#402A2E',
+      primaryShadow: '#E0574B',
+    },
+  },
+};
+
+export function themedPalette(base: Palette, theme: ThemeId): Palette {
+  if (theme === 'clasico') return base;
+  return { ...base, ...OVERRIDES[theme][base.scheme] };
+}

@@ -1,23 +1,29 @@
+import Feather from '@expo/vector-icons/Feather';
 import { router } from 'expo-router';
-import { useState, type ReactNode } from 'react';
-import { StyleSheet, Switch, View } from 'react-native';
+import { useState, useSyncExternalStore, type ReactNode } from 'react';
+import { Pressable, StyleSheet, Switch, View } from 'react-native';
 
-import { useSettings } from '../application/services';
+import { useAccess, useSettings } from '../application/services';
+import { adsStore, showPrivacyOptions } from '../platform/ads';
 import { MAX_POINTS } from '../domain';
 import { AppText } from '../ui/components/AppText';
 import { Field } from '../ui/components/Field';
 import { IconButton } from '../ui/components/IconButton';
 import { Screen } from '../ui/components/Screen';
 import { Segmented } from '../ui/components/Segmented';
+import { Button } from '../ui/components/Button';
 import { Surface } from '../ui/components/Surface';
 import { useTheme } from '../ui/theme';
-import { space, touch } from '../ui/tokens';
+import { radius, space, THEMES, touch } from '../ui/tokens';
 
 export default function SettingsScreen() {
   const { colors } = useTheme();
   const [settings, update] = useSettings();
   const [shortcuts, setShortcuts] = useState(settings.shortcuts.map(String));
   const [error, setError] = useState<string | null>(null);
+  const { access } = useAccess();
+  const ads = useSyncExternalStore(adsStore.subscribe, adsStore.get);
+  const isPlus = access === 'plus';
 
   const save = async (patch: Parameters<typeof update>[0]) => {
     try {
@@ -58,6 +64,22 @@ export default function SettingsScreen() {
         </AppText>
       ) : null}
 
+      <Surface raised={false} fill={isPlus ? colors.teamSoft[2] : undefined}>
+        <AppText variant="bodyStrong">{isPlus ? 'Plus activo' : 'Quitar anuncios y obtener Plus'}</AppText>
+        <AppText variant="caption" muted style={styles.gap}>
+          {isPlus
+            ? 'Sin publicidad, con temas y plantillas extra. Gracias por apoyar La Mesa.'
+            : 'Pago único: sin publicidad, tres temas de color y dos plantillas extra para compartir.'}
+        </AppText>
+        <Button
+          style={styles.gapTop}
+          tone="secondary"
+          label="Ver Plus"
+          onPress={() => router.push('/plus')}
+          testID="open-plus"
+        />
+      </Surface>
+
       <Section title="Apariencia">
         <Segmented
           label="Tema"
@@ -72,6 +94,34 @@ export default function SettingsScreen() {
         <AppText variant="caption" muted>
           El tamaño del texto sigue el ajuste de accesibilidad del teléfono.
         </AppText>
+        <View style={styles.themes} accessibilityRole="radiogroup" accessibilityLabel="Color">
+          {THEMES.map((t) => {
+            const locked = t.plus && !isPlus;
+            const selected = (isPlus ? settings.theme : 'clasico') === t.id;
+            return (
+              <Pressable
+                key={t.id}
+                accessibilityRole="radio"
+                accessibilityState={{ selected }}
+                accessibilityLabel={`${t.label}${locked ? ', incluido en Plus' : ''}`}
+                onPress={() => (locked ? router.push('/plus') : void save({ theme: t.id }))}
+                style={[
+                  styles.theme,
+                  { borderColor: selected ? colors.stroke : colors.hairline, backgroundColor: colors.surface },
+                ]}
+              >
+                <View style={[styles.swatch, { backgroundColor: t.swatch }]}>
+                  {locked ? <Feather name="lock" size={14} color="#FFFFFF" /> : null}
+                  {selected ? <Feather name="check" size={16} color="#FFFFFF" /> : null}
+                </View>
+                <AppText variant="label">{t.label}</AppText>
+                <AppText variant="caption" muted numberOfLines={1}>
+                  {locked ? 'Plus' : t.description}
+                </AppText>
+              </Pressable>
+            );
+          })}
+        </View>
       </Section>
 
       <Section title="Atajos al anotar">
@@ -108,6 +158,14 @@ export default function SettingsScreen() {
           onChange={(tableKeepAwake) => void save({ tableKeepAwake })}
         />
       </Section>
+
+      {ads.privacyOptionsRequired && !isPlus ? (
+        <Button
+          tone="secondary"
+          label="Opciones de privacidad de anuncios"
+          onPress={() => void showPrivacyOptions().catch(() => undefined)}
+        />
+      ) : null}
 
       <Surface raised={false}>
         <AppText variant="bodyStrong">Tus datos</AppText>
@@ -177,4 +235,16 @@ const styles = StyleSheet.create({
     padding: space.md,
   },
   gap: { marginTop: space.xs },
+  gapTop: { marginTop: space.md },
+  themes: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  theme: {
+    flexGrow: 1,
+    flexBasis: 140,
+    borderWidth: 2,
+    borderRadius: radius.md,
+    padding: space.md,
+    gap: space.xs,
+    minHeight: touch.min,
+  },
+  swatch: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
 });

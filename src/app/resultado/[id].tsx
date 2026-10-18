@@ -194,6 +194,16 @@ export default function ResultScreen() {
         <SessionStrip overview={session} gameId={state.id} winnerKey={winner?.compositionKey ?? null} />
       ) : null}
 
+      {state.status === 'finished' ? (
+        <Button
+          tone="secondary"
+          label="Compartir resultado"
+          hint="Imagen para WhatsApp o redes"
+          testID="share-result"
+          onPress={() => router.push({ pathname: '/compartir/[id]', params: { id: state.id } })}
+        />
+      ) : null}
+
       <Button tone="ghost" label="Ver el apunte completo" onPress={() => router.replace(`/partida/${state.id}`)} />
       <Button testID="delete-game" tone="danger" label="Borrar partida" onPress={remove} disabled={busy} />
       {error ? <AppText color={colors.danger}>{error}</AppText> : null}

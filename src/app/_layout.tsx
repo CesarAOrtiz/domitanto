@@ -10,6 +10,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ServicesProvider, useBoot, useSettings } from '../application/services';
@@ -86,20 +87,23 @@ export default function RootLayout() {
   }, [fontsReady, boot.status]);
 
   return (
-    <SafeAreaProvider>
-      {fontsReady && boot.status === 'ready' ? (
-        <ServicesProvider services={boot.services}>
-          <ThemedApp />
-        </ServicesProvider>
-      ) : (
-        <ThemeProvider>
-          <BootScreen boot={fontsReady ? boot : { status: 'loading' }} retry={retry} />
-        </ThemeProvider>
-      )}
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={styles.root}>
+      <SafeAreaProvider>
+        {fontsReady && boot.status === 'ready' ? (
+          <ServicesProvider services={boot.services}>
+            <ThemedApp />
+          </ServicesProvider>
+        ) : (
+          <ThemeProvider>
+            <BootScreen boot={fontsReady ? boot : { status: 'loading' }} retry={retry} />
+          </ThemeProvider>
+        )}
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1 },
   fatal: { flex: 1, justifyContent: 'center', padding: space.xl, gap: space.md },
 });

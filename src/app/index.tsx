@@ -1,6 +1,8 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
+import Feather from '@expo/vector-icons/Feather';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import Swipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 
 import { ActiveGameExistsError, type GameSnapshot } from '../application/gameService';
 import { useServices } from '../application/services';
@@ -84,6 +86,24 @@ export default function Home() {
     );
   };
 
+  const removeGame = (snapshot: GameSnapshot, onCancel?: () => void) => {
+    Alert.alert('¿Borrar la partida?', 'Se borran el resultado y todas sus manos. No se puede deshacer.', [
+      { text: 'Cancelar', style: 'cancel', onPress: onCancel },
+      {
+        text: 'Borrar',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await games.deleteGame(snapshot.state.id);
+            await refresh();
+          } catch (e) {
+            setError(storageMessage(e));
+          }
+        },
+      },
+    ]);
+  };
+
   return (
     <Screen>
       <View style={styles.brand}>
@@ -162,8 +182,11 @@ export default function Home() {
             Recientes
           </AppText>
           {recent.map((g) => (
-            <RecentRow key={g.state.id} snapshot={g} />
+            <RecentRow key={g.state.id} snapshot={g} onDelete={(onCancel) => removeGame(g, onCancel)} />
           ))}
+          <AppText variant="caption" muted>
+            Desliza una partida para verla o borrarla.
+          </AppText>
         </View>
       ) : null}
     </Screen>
@@ -219,35 +242,90 @@ function ActiveGameCard({
   );
 }
 
-function RecentRow({ snapshot }: { snapshot: GameSnapshot }) {
+function RecentRow({ snapshot, onDelete }: { snapshot: GameSnapshot; onDelete: (onCancel: () => void) => void }) {
   const { colors } = useTheme();
+  const swipe = useRef<SwipeableMethods>(null);
+  const open = () => {
+    swipe.current?.close();
+    router.push(`/resultado/${snapshot.state.id}`);
+  };
+  const remove = () => onDelete(() => swipe.current?.close());
   const { state, outcome } = snapshot;
   const winner = state.sides.find((s) => s.id === outcome.winnerSideId);
   const abandoned = state.status === 'abandoned';
   const duration = durationLabel(state.startedAt, state.endedAt);
   return (
-    <Pressable
-      testID={`recent-${state.id}`}
-      accessibilityRole="button"
-      accessibilityHint="Abre el resultado de la partida"
-      onPress={() => router.push(`/resultado/${state.id}`)}
-      style={({ pressed }) => [
-        styles.recent,
-        { backgroundColor: pressed ? colors.hairline : colors.surface, borderColor: colors.hairline },
-      ]}
+    <Swipeable
+      ref={swipe}
+      friction={2}
+      leftThreshold={48}
+      rightThreshold={48}
+      renderLeftActions={() => (
+        <SwipeAction
+          icon="eye"
+          label="Ver"
+          fill={colors.teamSoft[0] ?? colors.surface}
+          ink={colors.teamText[0] ?? colors.ink}
+          onPress={open}
+        />
+      )}
+      renderRightActions={() => (
+        <SwipeAction icon="trash-2" label="Borrar" fill={colors.dangerSoft} ink={colors.danger} onPress={remove} />
+      )}
     >
-      {winner ? <TeamBadge position={winner.position} size={26} /> : <DominoMark top={0} bottom={0} size={10} />}
-      <View style={styles.flex}>
-        <AppText variant="bodyStrong" numberOfLines={1}>
-          {abandoned ? 'Abandonada' : winner ? `Ganó ${winner.displayName}` : 'Sin resultado'}
+      <Pressable
+        testID={`recent-${state.id}`}
+        accessibilityRole="button"
+        accessibilityHint="Abre el resultado de la partida"
+        accessibilityActions={[{ name: 'activate' }, { name: 'delete', label: 'Borrar partida' }]}
+        onAccessibilityAction={(e) => (e.nativeEvent.actionName === 'delete' ? remove() : open())}
+        onPress={open}
+        style={({ pressed }) => [
+          styles.recent,
+          { backgroundColor: pressed ? colors.hairline : colors.surface, borderColor: colors.hairline },
+        ]}
+      >
+        {winner ? <TeamBadge position={winner.position} size={26} /> : <DominoMark top={0} bottom={0} size={10} />}
+        <View style={styles.flex}>
+          <AppText variant="bodyStrong" numberOfLines={1}>
+            {abandoned ? 'Abandonada' : winner ? `Ganó ${winner.displayName}` : 'Sin resultado'}
+          </AppText>
+          <AppText variant="caption" muted>
+            {whenLabel(state.startedAt)}
+            {duration ? ` · ${duration}` : ''}
+          </AppText>
+        </View>
+        <AppText variant="heading" tabular>
+          {scoreline(state, outcome)}
         </AppText>
-        <AppText variant="caption" muted>
-          {whenLabel(state.startedAt)}
-          {duration ? ` · ${duration}` : ''}
-        </AppText>
-      </View>
-      <AppText variant="heading" tabular>
-        {scoreline(state, outcome)}
+      </Pressable>
+    </Swipeable>
+  );
+}
+
+function SwipeAction({
+  icon,
+  label,
+  fill,
+  ink,
+  onPress,
+}: {
+  icon: 'eye' | 'trash-2';
+  label: string;
+  fill: string;
+  ink: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={[styles.swipeAction, { backgroundColor: fill, borderColor: ink }]}
+    >
+      <Feather name={icon} size={20} color={ink} />
+      <AppText variant="label" color={ink}>
+        {label}
       </AppText>
     </Pressable>
   );
@@ -272,6 +350,15 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderRadius: radius.md,
     padding: space.md,
+  },
+  swipeAction: {
+    width: 88,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.xs,
+    borderWidth: 1.5,
+    borderRadius: radius.md,
+    marginHorizontal: space.xs,
   },
   error: { borderWidth: 1.5, borderRadius: radius.md, padding: space.md },
 });

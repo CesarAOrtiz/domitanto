@@ -87,7 +87,9 @@ export default function Home() {
   return (
     <Screen>
       <View style={styles.brand}>
-        <DominoMark top={6} bottom={6} size={16} horizontal />
+        <View>
+          <DominoMark top={6} bottom={6} size={16} horizontal />
+        </View>
         <View style={styles.flex}>
           <AppText variant="heading" accessibilityRole="header">
             La Mesa
@@ -132,23 +134,25 @@ export default function Home() {
             </View>
           </View>
           <AppText muted style={styles.heroCopy}>
-            Apunta cada mano en segundos. Se guarda en este teléfono, con o sin internet.
+            Apunta cada mano en segundos.
           </AppText>
-          <Button
-            testID="quick-game"
-            size="lg"
-            label="Partida rápida"
-            hint="Parejas · meta 200"
-            onPress={startQuick}
-            loading={busy}
-          />
-          <Button
-            tone="secondary"
-            label="Personalizar"
-            hint="Modo, meta, nombres y reglas"
-            onPress={() => router.push('/nueva')}
-            disabled={busy}
-          />
+          <View style={styles.heroActions}>
+            <Button
+              testID="quick-game"
+              size="lg"
+              label="Partida rápida"
+              hint="Parejas · meta 200"
+              onPress={startQuick}
+              loading={busy}
+            />
+            <Button
+              tone="secondary"
+              label="Personalizar"
+              hint="Modo, meta, nombres y reglas"
+              onPress={() => router.push('/nueva')}
+              disabled={busy}
+            />
+          </View>
         </Surface>
       )}
 
@@ -162,13 +166,6 @@ export default function Home() {
           ))}
         </View>
       ) : null}
-
-      <View style={styles.local}>
-        <View style={[styles.dot, { backgroundColor: colors.success }]} />
-        <AppText variant="caption" muted style={styles.flex}>
-          Tus partidas viven en este teléfono. Sin cuentas ni nube.
-        </AppText>
-      </View>
     </Screen>
   );
 }
@@ -253,6 +250,7 @@ const styles = StyleSheet.create({
   heroTop: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
   heroArt: { flexDirection: 'row', paddingRight: space.xs },
   heroCopy: { marginTop: space.sm, marginBottom: space.lg, maxWidth: 320 },
+  heroActions: { gap: space.md },
   section: { gap: space.sm },
   mini: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginVertical: space.md },
   miniSide: { flex: 1, minWidth: 130, borderRadius: radius.md, padding: space.md, gap: space.xs },
@@ -266,7 +264,5 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: space.md,
   },
-  local: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.sm },
-  dot: { width: 8, height: 8, borderRadius: 4 },
   error: { borderWidth: 1.5, borderRadius: radius.md, padding: space.md },
 });

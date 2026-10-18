@@ -10,6 +10,7 @@ import { hapticTap } from '../platform/haptics';
 import { AppText } from '../ui/components/AppText';
 import { Button } from '../ui/components/Button';
 import { DominoMark } from '../ui/components/DominoMark';
+import { IconButton } from '../ui/components/IconButton';
 import { Screen } from '../ui/components/Screen';
 import { Surface } from '../ui/components/Surface';
 import { TeamBadge } from '../ui/components/TeamBadge';
@@ -87,7 +88,7 @@ export default function Home() {
     <Screen>
       <View style={styles.brand}>
         <DominoMark top={6} bottom={6} size={16} horizontal />
-        <View>
+        <View style={styles.flex}>
           <AppText variant="heading" accessibilityRole="header">
             La Mesa
           </AppText>
@@ -95,6 +96,7 @@ export default function Home() {
             Apunte de dominó
           </AppText>
         </View>
+        <IconButton icon="settings" label="Ajustes" onPress={() => router.push('/ajustes')} testID="open-settings" />
       </View>
 
       {error ? (

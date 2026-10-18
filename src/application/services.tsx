@@ -1,14 +1,18 @@
 import { openDatabaseAsync } from 'expo-sqlite';
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 
 import { CONNECTION_PRAGMAS } from '../data/driver';
 import { createExpoDriver } from '../data/expoDriver';
 import { migrate } from '../data/migrations';
+import { loadSettings, type AppSettings } from '../data/settingsRepository';
+import { setHapticsEnabled } from '../platform/haptics';
 import { systemClock, uuidSource } from '../platform/ids';
 import { GameService } from './gameService';
+import { createSettingsStore, type SettingsStore } from './settingsStore';
 
 export interface Services {
   games: GameService;
+  settings: SettingsStore;
   newCommandId: () => string;
 }
 
@@ -27,8 +31,12 @@ export async function bootServices(): Promise<Services> {
   await db.execAsync(CONNECTION_PRAGMAS);
   const driver = createExpoDriver(db);
   await migrate(driver);
+  const settings = createSettingsStore(driver, await loadSettings(driver));
+  setHapticsEnabled(settings.get().haptics);
+  settings.subscribe(() => setHapticsEnabled(settings.get().haptics));
   return {
     games: new GameService(driver, systemClock, uuidSource),
+    settings,
     newCommandId: () => uuidSource.newId(),
   };
 }
@@ -62,4 +70,10 @@ export function useServices(): Services {
   const value = useContext(ServicesContext);
   if (!value) throw new Error('useServices fuera de ServicesProvider');
   return value;
+}
+
+export function useSettings(): [AppSettings, SettingsStore['update']] {
+  const { settings } = useServices();
+  const value = useSyncExternalStore(settings.subscribe, settings.get);
+  return [value, settings.update];
 }

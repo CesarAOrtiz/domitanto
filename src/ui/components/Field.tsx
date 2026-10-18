@@ -1,4 +1,4 @@
-import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
+import { StyleSheet, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
 
 import { useTheme } from '../theme';
 import { fonts, radius, space, touch } from '../tokens';
@@ -8,12 +8,13 @@ interface Props extends Omit<TextInputProps, 'style'> {
   label: string;
   accent?: string;
   error?: string | null;
+  containerStyle?: StyleProp<ViewStyle>;
 }
 
-export function Field({ label, accent, error, ...input }: Props) {
+export function Field({ label, accent, error, containerStyle, ...input }: Props) {
   const { colors } = useTheme();
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, containerStyle]}>
       <AppText variant="label" muted>
         {label}
       </AppText>

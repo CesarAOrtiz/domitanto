@@ -10,6 +10,8 @@ import { AppText } from './AppText';
 interface Props {
   sides: Side[];
   outcome: Outcome;
+  /** Si se indica, tocar una mano abre su corrección. */
+  onSelect?: (view: EntryView) => void;
 }
 
 function stateLabel(view: EntryView): string | null {
@@ -23,7 +25,7 @@ function stateLabel(view: EntryView): string | null {
  * Tabla compacta de manos con una columna por equipo, como el apunte en papel.
  * Alterna entre puntos de cada mano y acumulado.
  */
-export function HandTable({ sides, outcome }: Props) {
+export function HandTable({ sides, outcome, onSelect }: Props) {
   const { colors } = useTheme();
   const [cumulative, setCumulative] = useState(false);
   const ordered = [...sides].sort((a, b) => a.position - b.position);
@@ -73,11 +75,18 @@ export function HandTable({ sides, outcome }: Props) {
             ? `Mano ${view.entry.sequence}: sin puntos`
             : `Mano ${view.entry.sequence}: ${view.total} a ${side?.displayName ?? ''}`;
         return (
-          <View
+          <Pressable
             key={view.entry.id}
-            style={[styles.row, { borderColor: colors.hairline }]}
-            accessible
+            disabled={!onSelect}
+            onPress={() => onSelect?.(view)}
+            testID={`hand-${view.entry.sequence}`}
+            style={({ pressed }) => [
+              styles.row,
+              { borderColor: colors.hairline, backgroundColor: pressed ? colors.surfaceAlt : 'transparent' },
+            ]}
+            accessibilityRole={onSelect ? 'button' : undefined}
             accessibilityLabel={note ? `${a11y}. ${note}` : a11y}
+            accessibilityHint={onSelect ? 'Abre la corrección de esta mano' : undefined}
           >
             <View style={styles.indexCol}>
               <AppText variant="caption" muted tabular>
@@ -98,14 +107,14 @@ export function HandTable({ sides, outcome }: Props) {
                   variant="bodyStrong"
                   tabular
                   align="right"
-                  style={[styles.cell, inactive && styles.struck]}
+                  style={[styles.cell, inactive && value !== undefined && styles.struck]}
                   color={mine ? colors.teamText[s.position] : colors.inkMuted}
                 >
                   {value === undefined ? '·' : cumulative ? String(value) : `+${value}`}
                 </AppText>
               );
             })}
-          </View>
+          </Pressable>
         );
       })}
 

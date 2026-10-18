@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import type { Side } from '../../domain';
 import { isPlaceholderName, sideLetter } from '../../domain';
 import { useTheme } from '../theme';
-import { lift, radius, space, touch } from '../tokens';
+import { lift, radius, scoreFontSize, space, touch, type as typeScale } from '../tokens';
 import { AppText } from './AppText';
 import { PipTrack } from './PipTrack';
 import { TeamBadge } from './TeamBadge';
@@ -32,6 +32,7 @@ export function ScorePanel({ side, total, target, compact, winner, onScore }: Pr
   const members = membersLabel(side);
   const remaining = Math.max(0, target - total);
   const letter = sideLetter(side.position);
+  const size = scoreFontSize((compact ? typeScale.scoreSmall : typeScale.score).fontSize, total);
 
   return (
     <View style={styles.wrap}>
@@ -60,6 +61,7 @@ export function ScorePanel({ side, total, target, compact, winner, onScore }: Pr
         <AppText
           variant={compact ? 'scoreSmall' : 'score'}
           color={colors.onTeam}
+          style={{ fontSize: size, lineHeight: Math.round(size * 1.06) }}
           maxFontSizeMultiplier={1.4}
           adjustsFontSizeToFit
           numberOfLines={1}

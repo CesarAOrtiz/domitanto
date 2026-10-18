@@ -12,7 +12,7 @@ import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { ServicesProvider, useBoot } from '../application/services';
+import { ServicesProvider, useBoot, useSettings } from '../application/services';
 import { AppText } from '../ui/components/AppText';
 import { Button } from '../ui/components/Button';
 import { DominoMark } from '../ui/components/DominoMark';
@@ -21,8 +21,55 @@ import { space } from '../ui/tokens';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
-function Root() {
+type Boot = ReturnType<typeof useBoot>[0];
+
+/** Pantalla mientras carga o si la base no se pudo abrir. */
+function BootScreen({ boot, retry }: { boot: Boot; retry: () => void }) {
   const { colors } = useTheme();
+  if (boot.status !== 'error') return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
+  return (
+    <View style={[styles.fatal, { backgroundColor: colors.bg }]}>
+      <DominoMark top={0} bottom={0} size={28} />
+      <AppText variant="heading">No se pudo abrir el apunte</AppText>
+      <AppText muted>
+        La base de datos de este teléfono no se pudo preparar. No se borró nada: tus partidas siguen guardadas.
+      </AppText>
+      <AppText variant="caption" muted selectable>
+        {boot.message}
+      </AppText>
+      <Button label="Reintentar" onPress={retry} />
+    </View>
+  );
+}
+
+function Navigator() {
+  const { colors } = useTheme();
+  return (
+    <>
+      <StatusBar style={colors.scheme === 'dark' ? 'light' : 'dark'} />
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="nueva" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="ajustes" />
+        <Stack.Screen name="partida/[id]" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="mesa/[id]" options={{ animation: 'fade' }} />
+        <Stack.Screen name="resultado/[id]" options={{ gestureEnabled: false }} />
+      </Stack>
+    </>
+  );
+}
+
+/** El tema depende del ajuste de apariencia guardado en el teléfono. */
+function ThemedApp() {
+  const [settings] = useSettings();
+  return (
+    <ThemeProvider appearance={settings.appearance}>
+      <Navigator />
+    </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
   const [boot, retry] = useBoot();
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
@@ -38,48 +85,17 @@ function Root() {
     if (fontsReady && boot.status !== 'loading') SplashScreen.hideAsync().catch(() => undefined);
   }, [fontsReady, boot.status]);
 
-  if (!fontsReady || boot.status === 'loading') return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
-
-  if (boot.status === 'error') {
-    return (
-      <View style={[styles.fatal, { backgroundColor: colors.bg }]}>
-        <DominoMark top={0} bottom={0} size={28} />
-        <AppText variant="heading">No se pudo abrir el apunte</AppText>
-        <AppText muted>
-          La base de datos de este teléfono no se pudo preparar. No se borró nada: tus partidas siguen guardadas.
-        </AppText>
-        <AppText variant="caption" muted selectable>
-          {boot.message}
-        </AppText>
-        <Button label="Reintentar" onPress={retry} />
-      </View>
-    );
-  }
-
-  return (
-    <ServicesProvider services={boot.services}>
-      <StatusBar style={colors.scheme === 'dark' ? 'light' : 'dark'} />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.bg },
-        }}
-      >
-        <Stack.Screen name="index" />
-        <Stack.Screen name="nueva" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="partida/[id]" options={{ gestureEnabled: false }} />
-        <Stack.Screen name="resultado/[id]" options={{ gestureEnabled: false }} />
-      </Stack>
-    </ServicesProvider>
-  );
-}
-
-export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <ThemeProvider>
-        <Root />
-      </ThemeProvider>
+      {fontsReady && boot.status === 'ready' ? (
+        <ServicesProvider services={boot.services}>
+          <ThemedApp />
+        </ServicesProvider>
+      ) : (
+        <ThemeProvider>
+          <BootScreen boot={fontsReady ? boot : { status: 'loading' }} retry={retry} />
+        </ThemeProvider>
+      )}
     </SafeAreaProvider>
   );
 }

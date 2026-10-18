@@ -110,3 +110,13 @@ export const type = {
 } as const;
 
 export type TypeVariant = keyof typeof type;
+
+/**
+ * Tamaño de un marcador según sus cifras. No dependemos de `adjustsFontSizeToFit`
+ * (no existe en web y en Android falla con fuentes personalizadas).
+ */
+export function scoreFontSize(base: number, value: number): number {
+  const digits = String(Math.abs(Math.trunc(value))).length;
+  const factor = digits <= 2 ? 1 : digits === 3 ? 0.72 : 0.55;
+  return Math.round(base * factor);
+}

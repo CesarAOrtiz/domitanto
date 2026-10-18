@@ -1,4 +1,4 @@
-# Decisiones de la etapa 1
+# Decisiones de las etapas 1 y 2
 
 ## Modelo de datos (migración 1)
 
@@ -34,3 +34,11 @@ Las tablas comerciales (derechos de Plus, exposición y elegibilidad de anuncios
 - Estilo «pegatina»: trazo de 2 px y sombra sólida desplazada, sin difuminados, degradados ni transparencias detrás del texto. El botón principal lleva la sombra en cobalto como único acento de marca; el oro aparece solo en la cinta «Ganador».
 - Space Grotesk para títulos y cifras (tabulares), Inter para la interfaz. La ficha de dominó de la marca y la barra de avance hacia la meta están hechas con puntos de ficha.
 - Los equipos conservan siempre su posición (A izquierda, B derecha) y se identifican por letra, nombre y color, nunca solo por color.
+
+## Etapa 2
+
+- **Corregir es un comando más.** La hoja de corrección construye `edit_entry`, `reassign_entry` o `void_entry` y los pasa por `previewCommand` antes de guardar; la vista previa y el guardado usan el mismo cálculo del dominio, así que lo que se ve es lo que queda. El `commandId` se conserva al reintentar y se renueva si cambia la propuesta.
+- **Fuera de resultado, no borrado.** Si una corrección adelanta el cierre, las manos posteriores pasan a `out_of_result`; si otra corrección reabre la partida, vuelven a contar. La interfaz siempre lo dice antes de confirmar.
+- **Ajustes en SQLite** (tabla `app_settings`, clave `preferences`), validados con zod campo a campo: un valor dañado vuelve a su valor por defecto sin perder los demás. Se guarda primero y luego se notifica a la interfaz.
+- **Pantalla encendida** con `expo-keep-awake` solo mientras el modo mesa tiene el foco y la app está activa; se libera al salir o al pasar a segundo plano.
+- **Tamaño del marcador por cifras** (`scoreFontSize`): `adjustsFontSizeToFit` no existe en web y falla en Android con fuentes propias, así que el tamaño se calcula y `adjustsFontSizeToFit` queda solo como respaldo en iOS.

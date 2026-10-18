@@ -10,8 +10,11 @@ interface Theme {
 
 const ThemeContext = createContext<Theme>({ colors: light, reduceMotion: false });
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  const scheme = useColorScheme();
+export type Appearance = 'system' | 'light' | 'dark';
+
+export function ThemeProvider({ children, appearance = 'system' }: { children: ReactNode; appearance?: Appearance }) {
+  const system = useColorScheme();
+  const scheme = appearance === 'system' ? system : appearance;
   const [reduceMotion, setReduceMotion] = useState(false);
 
   useEffect(() => {

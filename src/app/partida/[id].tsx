@@ -4,12 +4,13 @@ import { useCallback, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import type { GameSnapshot } from '../../application/gameService';
-import { useServices } from '../../application/services';
-import { findUndoTarget, lastEffectiveEntry, sideById, type GameCommand } from '../../domain';
+import { useServices, useSettings } from '../../application/services';
+import { findUndoTarget, lastEffectiveEntry, sideById, type EntryView, type GameCommand } from '../../domain';
 import { modeLabel, storageMessage } from '../../features/game/format';
 import { hapticError, hapticSuccess } from '../../platform/haptics';
 import { AppText } from '../../ui/components/AppText';
 import { Button } from '../../ui/components/Button';
+import { CorrectionSheet } from '../../ui/components/CorrectionSheet';
 import { HandTable } from '../../ui/components/HandTable';
 import { IconButton } from '../../ui/components/IconButton';
 import { ScoreEntrySheet, type EntrySubmission } from '../../ui/components/ScoreEntrySheet';
@@ -30,6 +31,8 @@ export default function GameScreen() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [save, setSave] = useState<{ state: SaveState; message?: string }>({ state: 'idle' });
   const [undoing, setUndoing] = useState(false);
+  const [correcting, setCorrecting] = useState<EntryView | null>(null);
+  const [settings] = useSettings();
   const undoCommand = useRef<string | null>(null);
 
   useFocusEffect(
@@ -46,11 +49,13 @@ export default function GameScreen() {
   );
 
   const run = async (command: GameCommand) => {
+    const wasFinished = snapshot?.state.status === 'finished';
     const result = await games.execute(id, command);
     setSnapshot(result);
     setSave({ state: 'saved' });
     hapticSuccess();
-    if (result.outcome.status === 'finished') {
+    // Solo se va al resultado cuando la partida acaba de cerrarse, no al corregir una ya cerrada.
+    if (!wasFinished && result.outcome.status === 'finished') {
       setSheetOpen(false);
       router.replace(`/resultado/${id}`);
     }
@@ -61,6 +66,16 @@ export default function GameScreen() {
     try {
       await run({ type: 'add_entry', ...entry });
       setSheetOpen(false);
+    } catch (e) {
+      hapticError();
+      throw new Error(storageMessage(e));
+    }
+  };
+
+  const correct = async (command: GameCommand) => {
+    try {
+      await run(command);
+      setCorrecting(null);
     } catch (e) {
       hapticError();
       throw new Error(storageMessage(e));
@@ -93,6 +108,7 @@ export default function GameScreen() {
   const { state, outcome } = snapshot;
   const sides = [...state.sides].sort((a, b) => a.position - b.position);
   const playable = state.status === 'active';
+  const editable = state.status !== 'abandoned';
   const compact = sides.length > 2;
   const last = lastEffectiveEntry(outcome);
   const lastSide = last ? sideById(state.sides, last.current.sideId) : undefined;
@@ -102,7 +118,7 @@ export default function GameScreen() {
   return (
     <Screen
       footer={
-        playable ? (
+        editable ? (
           <View style={styles.footerRow}>
             <View style={styles.saveStatus} accessibilityLiveRegion="polite">
               {save.state === 'error' ? (
@@ -146,6 +162,13 @@ export default function GameScreen() {
             Meta {state.rules.target} · {outcome.handsPlayed} {outcome.handsPlayed === 1 ? 'mano' : 'manos'}
           </AppText>
         </View>
+        <IconButton
+          icon="maximize"
+          label="Mesa"
+          showLabel
+          onPress={() => router.push(`/mesa/${id}`)}
+          testID="table-mode"
+        />
       </View>
 
       {!playable ? (
@@ -193,20 +216,35 @@ export default function GameScreen() {
             {last.entry.kind === 'scoreless_hand'
               ? `Mano ${last.entry.sequence} sin puntos`
               : `+${last.total} a ${lastSide?.displayName ?? ''} · mano ${last.entry.sequence}`}
+            {last.state === 'out_of_result' ? ' · fuera de resultado' : ''}
           </AppText>
         </View>
       ) : null}
 
-      <HandTable sides={state.sides} outcome={outcome} />
+      <HandTable sides={state.sides} outcome={outcome} onSelect={editable ? setCorrecting : undefined} />
+      {editable && outcome.entries.length > 0 ? (
+        <AppText variant="caption" muted align="center">
+          Toca una mano para corregirla, cambiarla de equipo o anularla.
+        </AppText>
+      ) : null}
 
       <ScoreEntrySheet
         visible={sheetOpen}
         sides={sides}
         bonuses={state.rules.bonuses}
         initialSideId={sheetSide}
+        shortcuts={settings.shortcuts}
         makeCommandId={newCommandId}
         onSubmit={submit}
         onClose={() => setSheetOpen(false)}
+      />
+
+      <CorrectionSheet
+        view={correcting}
+        state={state}
+        makeCommandId={newCommandId}
+        onSubmit={correct}
+        onClose={() => setCorrecting(null)}
       />
     </Screen>
   );

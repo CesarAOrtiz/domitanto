@@ -5,8 +5,12 @@ import { CONNECTION_PRAGMAS } from '../data/driver';
 import { createExpoDriver } from '../data/expoDriver';
 import { migrate } from '../data/migrations';
 import { loadSettings, type AppSettings } from '../data/settingsRepository';
+import { startAds } from '../platform/ads';
+import { createStore } from '../platform/commerce';
 import { setHapticsEnabled } from '../platform/haptics';
 import { systemClock, uuidSource } from '../platform/ids';
+import { adsAllowed } from './access';
+import { createAccessStore, type AccessState, type AccessStore } from './accessStore';
 import { GameService } from './gameService';
 import { PeopleService } from './peopleService';
 import { createSettingsStore, type SettingsStore } from './settingsStore';
@@ -14,6 +18,7 @@ import { createSettingsStore, type SettingsStore } from './settingsStore';
 export interface Services {
   games: GameService;
   people: PeopleService;
+  access: AccessStore;
   settings: SettingsStore;
   newCommandId: () => string;
 }
@@ -36,7 +41,15 @@ export async function bootServices(): Promise<Services> {
   const settings = createSettingsStore(driver, await loadSettings(driver));
   setHapticsEnabled(settings.get().haptics);
   settings.subscribe(() => setHapticsEnabled(settings.get().haptics));
+  const access = createAccessStore(driver, createStore(), systemClock);
+  // El acceso se resuelve antes de pedir anuncios; solo con acceso gratuito confirmado.
+  const maybeStartAds = () => {
+    if (adsAllowed(access.get().access)) void startAds();
+  };
+  access.subscribe(maybeStartAds);
+  void access.init();
   return {
+    access,
     games: new GameService(driver, systemClock, uuidSource),
     people: new PeopleService(driver, systemClock, uuidSource),
     settings,
@@ -79,4 +92,9 @@ export function useSettings(): [AppSettings, SettingsStore['update']] {
   const { settings } = useServices();
   const value = useSyncExternalStore(settings.subscribe, settings.get);
   return [value, settings.update];
+}
+
+export function useAccess(): AccessState {
+  const { access } = useServices();
+  return useSyncExternalStore(access.subscribe, access.get);
 }

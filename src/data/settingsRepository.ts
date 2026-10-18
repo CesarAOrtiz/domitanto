@@ -16,6 +16,8 @@ export const settingsSchema = z.object({
   guidesSeen: z.array(z.string().max(40)).max(50),
   /** Guardar como jugadores los nombres nuevos que se escriben al armar una partida. */
   saveNewNames: z.boolean(),
+  /** Tema elegido. Los de Plus solo se aplican con Plus activo; sin él se usa «Clásico». */
+  theme: z.enum(['clasico', 'malecon', 'cacao', 'flamboyan']),
 });
 
 export type AppSettings = z.infer<typeof settingsSchema>;
@@ -28,6 +30,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   tableMirror: false,
   guidesSeen: [],
   saveNewNames: true,
+  theme: 'clasico',
 };
 
 const KEY = 'preferences';

@@ -1,12 +1,14 @@
 import { contrastRatio } from '../contrast';
-import { dark, light, type Palette } from '../tokens';
+import { dark, light, themedPalette, THEMES, type Palette } from '../tokens';
 
 const AA = 4.5;
 
-describe.each([
-  ['claro', light],
-  ['oscuro', dark],
-] as [string, Palette][])('contrastes del tema %s', (_name, p) => {
+describe.each(
+  THEMES.flatMap((t) => [
+    [`${t.label} claro`, themedPalette(light, t.id)],
+    [`${t.label} oscuro`, themedPalette(dark, t.id)],
+  ]) as [string, Palette][],
+)('contrastes del tema %s', (_name, p) => {
   test.each([
     ['tinta / fondo', p.ink, p.bg],
     ['tinta / superficie', p.ink, p.surface],

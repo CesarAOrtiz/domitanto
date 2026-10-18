@@ -13,7 +13,7 @@ import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { ServicesProvider, useBoot, useSettings } from '../application/services';
+import { ServicesProvider, useAccess, useBoot, useSettings } from '../application/services';
 import { AppText } from '../ui/components/AppText';
 import { Button } from '../ui/components/Button';
 import { DominoMark } from '../ui/components/DominoMark';
@@ -63,8 +63,9 @@ function Navigator() {
 /** El tema depende del ajuste de apariencia guardado en el teléfono. */
 function ThemedApp() {
   const [settings] = useSettings();
+  const { access } = useAccess();
   return (
-    <ThemeProvider appearance={settings.appearance}>
+    <ThemeProvider appearance={settings.appearance} theme={access === 'plus' ? settings.theme : 'clasico'}>
       <Navigator />
     </ThemeProvider>
   );

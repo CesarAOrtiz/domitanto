@@ -1,4 +1,4 @@
-import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -178,12 +178,29 @@ export default function PlayerScreen() {
         />
       </View>
 
+      {record ? (
+        <View style={styles.links}>
+          <Button
+            tone="secondary"
+            label="Ver sus partidas"
+            onPress={() => router.push({ pathname: '/historial', params: { jugador: player.id } })}
+          />
+          <Button
+            tone="ghost"
+            label="Comparar periodos"
+            hint="Plus"
+            onPress={() => router.push({ pathname: '/comparar', params: { jugador: player.id } })}
+          />
+        </View>
+      ) : null}
+
       {error ? <AppText color={colors.danger}>{error}</AppText> : null}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  links: { gap: space.sm },
   flex: { flex: 1 },
   section: { gap: space.sm },
   row: { flexDirection: 'row', gap: space.sm },

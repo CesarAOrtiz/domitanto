@@ -221,7 +221,7 @@ function SessionStrip({
       </AppText>
       {pair ? (
         <AppText variant="caption" muted>
-          {pair.names.join(' y ')} esta noche: {recordLabel(pair).toLowerCase()}
+          {pair.names.join(' y ')} en esta sesión: {recordLabel(pair).toLowerCase()}
         </AppText>
       ) : null}
       <Button

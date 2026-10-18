@@ -44,8 +44,9 @@ export interface PlayerRecord extends WinRecord {
 export interface PairRecord extends WinRecord {
   /** IDs ordenados de los dos integrantes: identifica la pareja exacta. */
   compositionKey: string;
+  /** Integrantes en el orden de asiento de su partida más reciente. */
   playerIds: string[];
-  /** Alias más reciente de cada integrante, en el orden de `playerIds`. */
+  /** Alias de cada integrante en esa partida, en el orden de `playerIds`. */
   names: string[];
 }
 
@@ -119,8 +120,9 @@ export function pairRecords(results: GameResult[]): PairRecord[] {
   for (const result of chronological(results)) {
     for (const side of result.sides) {
       if (!side.compositionKey || side.members.length !== 2) continue;
-      const playerIds = side.compositionKey.split('|');
-      const names = playerIds.map((id) => side.members.find((m) => m.playerId === id)?.displayName ?? '');
+      // Nombres en orden de asiento para leerlos como se sentaron; la clave sigue siendo canónica.
+      const playerIds = side.members.map((m) => m.playerId!);
+      const names = side.members.map((m) => m.displayName);
       const record = byKey.get(side.compositionKey) ?? {
         compositionKey: side.compositionKey,
         playerIds,

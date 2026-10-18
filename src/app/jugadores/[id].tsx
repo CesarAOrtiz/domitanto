@@ -4,9 +4,9 @@ import { StyleSheet, View } from 'react-native';
 
 import type { PlayerProfile } from '../../application/peopleService';
 import { useServices } from '../../application/services';
-import { winRate } from '../../domain';
+import { winRate, type GameResult } from '../../domain';
 import { storageMessage, whenLabel } from '../../features/game/format';
-import { pairLabel, plural, streakLabel } from '../../features/people/format';
+import { plural, streakLabel } from '../../features/people/format';
 import { AppText } from '../../ui/components/AppText';
 import { Button } from '../../ui/components/Button';
 import { Field } from '../../ui/components/Field';
@@ -16,6 +16,16 @@ import { Screen } from '../../ui/components/Screen';
 import { Surface } from '../../ui/components/Surface';
 import { useTheme } from '../../ui/theme';
 import { space } from '../../ui/tokens';
+
+/** «con Luis, contra Ana y José» desde el punto de vista de la persona. */
+function matchup(result: GameResult, playerId: string): string {
+  const own = result.sides.find((s) => s.members.some((m) => m.playerId === playerId));
+  const partners = own?.members.filter((m) => m.playerId !== playerId).map((m) => m.displayName) ?? [];
+  const rivals = result.sides.filter((s) => s !== own).map((s) => s.members.map((m) => m.displayName).join(' y '));
+  return [partners.length ? `con ${partners.join(' y ')}` : null, `contra ${rivals.join(', ')}`]
+    .filter(Boolean)
+    .join(', ');
+}
 
 export default function PlayerScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -104,7 +114,11 @@ export default function PlayerScreen() {
             Con quién juega
           </AppText>
           {partners.map((p) => (
-            <RecordRow key={p.compositionKey} title={pairLabel(p)} record={p} />
+            <RecordRow
+              key={p.compositionKey}
+              title={`Con ${p.names.filter((_, i) => p.playerIds[i] !== player.id).join(' y ')}`}
+              record={p}
+            />
           ))}
         </View>
       ) : null}
@@ -118,7 +132,7 @@ export default function PlayerScreen() {
             <RecordRow
               key={result.gameId}
               title={won ? 'Ganó' : 'Perdió'}
-              subtitle={whenLabel(result.endedAt ?? result.startedAt)}
+              subtitle={`${whenLabel(result.endedAt ?? result.startedAt)} · ${matchup(result, player.id)}`}
             />
           ))}
         </View>

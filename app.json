@@ -38,7 +38,8 @@
             "backgroundColor": "#101820"
           }
         }
-      ]
+      ],
+      "expo-status-bar"
     ],
     "scheme": "lamesa",
     "backgroundColor": "#F6F4EF",

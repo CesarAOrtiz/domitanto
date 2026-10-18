@@ -23,7 +23,9 @@ import { Header } from '../../ui/components/Header';
 import { Screen } from '../../ui/components/Screen';
 import { Segmented } from '../../ui/components/Segmented';
 import { useTheme } from '../../ui/theme';
-import { space } from '../../ui/tokens';
+import { radius, space } from '../../ui/tokens';
+
+const FRAME = 2;
 
 const TEMPLATES: { id: CardTemplate; label: string; plus: boolean }[] = [
   { id: 'clasica', label: 'Clásica', plus: false },
@@ -87,7 +89,7 @@ export default function ShareScreen() {
 
   const size = logicalSize(format);
   const maxHeight = format === 'story' ? 520 : 9999;
-  const scale = width ? Math.min(1, width / size.width, maxHeight / size.height) : 0;
+  const scale = width ? Math.min(1, (width - FRAME * 2) / size.width, maxHeight / size.height) : 0;
 
   const share = async () => {
     setBusy(true);
@@ -130,7 +132,16 @@ export default function ShareScreen() {
 
       <View style={styles.preview} onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}>
         {scale > 0 ? (
-          <View style={{ width: size.width * scale, height: size.height * scale }}>
+          <View
+            style={[
+              styles.frame,
+              {
+                width: size.width * scale + FRAME * 2,
+                height: size.height * scale + FRAME * 2,
+                borderColor: colors.stroke,
+              },
+            ]}
+          >
             <View
               style={{
                 width: size.width,
@@ -203,6 +214,7 @@ export default function ShareScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   preview: { alignItems: 'center' },
+  frame: { borderWidth: FRAME, borderRadius: radius.md, overflow: 'hidden' },
   section: { gap: space.sm },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   toggle: {

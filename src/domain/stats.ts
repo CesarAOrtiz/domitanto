@@ -166,7 +166,14 @@ export interface SessionSummary {
 
 function compositionSignature(result: GameResult): string {
   return result.sides
-    .map((s) => s.compositionKey ?? s.members.map((m) => m.displayName).sort().join('|'))
+    .map(
+      (s) =>
+        s.compositionKey ??
+        s.members
+          .map((m) => m.displayName)
+          .sort()
+          .join('|'),
+    )
     .sort()
     .join(' / ');
 }

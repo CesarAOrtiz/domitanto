@@ -108,7 +108,13 @@ export async function listResults(db: SqlExecutor, filter: ResultFilter = {}): P
   const ids = games.map((g) => g.id);
   const marks = ids.map(() => '?').join(', ');
   const [sides, members] = await Promise.all([
-    db.all<{ id: string; game_id: string; position: number; display_name_snapshot: string; composition_key: string | null }>(
+    db.all<{
+      id: string;
+      game_id: string;
+      position: number;
+      display_name_snapshot: string;
+      composition_key: string | null;
+    }>(
       `SELECT id, game_id, position, display_name_snapshot, composition_key FROM game_sides
        WHERE game_id IN (${marks}) ORDER BY position`,
       ids,

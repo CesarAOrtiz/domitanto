@@ -6,8 +6,10 @@ import Swipeable, { type SwipeableMethods } from 'react-native-gesture-handler/R
 
 import { ActiveGameExistsError, type GameSnapshot } from '../application/gameService';
 import { useServices } from '../application/services';
+import type { SessionRow } from '../data/sessionRepository';
 import { quickGameSetup } from '../domain';
 import { durationLabel, scoreline, storageMessage, whenLabel } from '../features/game/format';
+import { plural } from '../features/people/format';
 import { hapticTap } from '../platform/haptics';
 import { AppText } from '../ui/components/AppText';
 import { Button } from '../ui/components/Button';
@@ -21,8 +23,9 @@ import { radius, space } from '../ui/tokens';
 
 export default function Home() {
   const { colors } = useTheme();
-  const { games, newCommandId } = useServices();
+  const { games, people, newCommandId } = useServices();
   const [active, setActive] = useState<GameSnapshot | null>(null);
+  const [session, setSession] = useState<SessionRow | null>(null);
   const [recent, setRecent] = useState<GameSnapshot[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -34,13 +37,14 @@ export default function Home() {
       const activeId = await games.activeGameId();
       setActive(activeId ? await games.getGame(activeId) : null);
       setRecent(await games.recentClosed(3));
+      setSession(await people.currentSession());
       setError(null);
     } catch (e) {
       setError(storageMessage(e));
     } finally {
       setLoaded(true);
     }
-  }, [games]);
+  }, [games, people]);
 
   useFocusEffect(
     useCallback(() => {
@@ -176,6 +180,16 @@ export default function Home() {
         </Surface>
       )}
 
+      {session && session.gameCount > 1 ? (
+        <Button
+          tone="secondary"
+          label="Sesión de hoy"
+          hint={`${plural(session.gameCount, 'partida', 'partidas')} · quién va ganando`}
+          onPress={() => router.push({ pathname: '/sesion/[id]', params: { id: session.id } })}
+          testID="current-session"
+        />
+      ) : null}
+
       {recent.length > 0 ? (
         <View style={styles.section}>
           <AppText variant="overline" muted accessibilityRole="header">
@@ -189,6 +203,25 @@ export default function Home() {
           </AppText>
         </View>
       ) : null}
+
+      <View style={styles.links}>
+        <Button
+          style={styles.flex}
+          tone="ghost"
+          label="Grupos"
+          hint="Tu gente de siempre"
+          onPress={() => router.push('/grupos')}
+          testID="open-groups"
+        />
+        <Button
+          style={styles.flex}
+          tone="ghost"
+          label="Jugadores"
+          hint="Victorias de cada uno"
+          onPress={() => router.push('/jugadores')}
+          testID="open-players"
+        />
+      </View>
     </Screen>
   );
 }
@@ -360,5 +393,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     marginHorizontal: space.xs,
   },
+  links: { flexDirection: 'row', gap: space.sm },
   error: { borderWidth: 1.5, borderRadius: radius.md, padding: space.md },
 });

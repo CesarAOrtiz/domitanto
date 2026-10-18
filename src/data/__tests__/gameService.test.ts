@@ -75,7 +75,11 @@ describe('migraciones', () => {
     await driver.run("INSERT INTO app_settings (key, value) VALUES ('tema', 'oscuro')");
     const next = [
       ...MIGRATIONS,
-      { version: MIGRATIONS.length + 1, name: 'prueba', sql: 'ALTER TABLE app_settings ADD COLUMN updated_at INTEGER;' },
+      {
+        version: MIGRATIONS.length + 1,
+        name: 'prueba',
+        sql: 'ALTER TABLE app_settings ADD COLUMN updated_at INTEGER;',
+      },
     ];
     expect(await migrate(driver, next)).toBe(MIGRATIONS.length + 1);
     const row = await driver.first<{ value: string }>("SELECT value FROM app_settings WHERE key = 'tema'");

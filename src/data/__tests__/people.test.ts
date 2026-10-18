@@ -42,7 +42,14 @@ async function play(games: GameService, setupOrId: GameSetup, winner: 0 | 1, gro
   const id = await games.createGame(setupOrId, cmd(), { groupId });
   const { state } = await games.getGame(id);
   const side = state.sides.find((s) => s.position === winner)!;
-  await games.execute(id, { type: 'add_entry', commandId: cmd(), kind: 'hand', sideId: side.id, basePoints: 100, bonusCodes: [] });
+  await games.execute(id, {
+    type: 'add_entry',
+    commandId: cmd(),
+    kind: 'hand',
+    sideId: side.id,
+    basePoints: 100,
+    bonusCodes: [],
+  });
   return id;
 }
 
@@ -108,7 +115,13 @@ describe('jugadores', () => {
     const id = await play(games, pairs([ps[0]!.id, ps[1]!.id], [ps[2]!.id, ps[3]!.id]), 0);
     const { state } = await games.getGame(id);
     const entry = state.entries[0]!;
-    await games.execute(id, { type: 'edit_entry', commandId: cmd(), entryId: entry.id, basePoints: 40, bonusCodes: [] });
+    await games.execute(id, {
+      type: 'edit_entry',
+      commandId: cmd(),
+      entryId: entry.id,
+      basePoints: 40,
+      bonusCodes: [],
+    });
     const profile = await people.playerProfile(ps[0]!.id);
     expect(profile?.record).toBeNull();
   });

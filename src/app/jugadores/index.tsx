@@ -113,6 +113,16 @@ export default function PlayersScreen() {
         <Button tone="secondary" label="Añadir jugador" onPress={() => setAdding(true)} testID="add-player" />
       )}
 
+      {records.size > 0 ? (
+        <Button
+          tone="ghost"
+          label="Comparar periodos"
+          hint="Este mes contra el anterior, y más · Plus"
+          onPress={() => router.push('/comparar')}
+          testID="open-compare"
+        />
+      ) : null}
+
       {archived.length > 0 ? (
         <View style={styles.list}>
           <Button

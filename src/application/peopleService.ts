@@ -4,6 +4,7 @@ import {
   isDecisive,
   pairRecords,
   partnersOf,
+  playedWithin,
   playerRecord,
   playerRecords,
   summarizeSession,
@@ -112,6 +113,11 @@ export class PeopleService {
     return new Map(records.map((r) => [r.playerId, r]));
   }
 
+  /** Todas las partidas con su resultado, para el historial y las comparaciones. */
+  async allResults(): Promise<GameResult[]> {
+    return listResults(this.db);
+  }
+
   // Grupos
 
   async groups(): Promise<Group[]> {
@@ -144,9 +150,7 @@ export class PeopleService {
     if (!group) return null;
     const members = new Set(group.memberIds);
     const all = await listPlayers(this.db);
-    const results = (await listResults(this.db)).filter((r) =>
-      r.sides.every((s) => s.members.every((m) => m.playerId !== null && members.has(m.playerId))),
-    );
+    const results = (await listResults(this.db)).filter((r) => playedWithin(r, members));
     return {
       group,
       members: group.memberIds.map((pid) => all.find((p) => p.id === pid)).filter((p): p is Player => !!p),

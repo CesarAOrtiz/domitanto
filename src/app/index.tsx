@@ -202,6 +202,13 @@ export default function Home() {
           <AppText variant="caption" muted>
             Desliza una partida para verla o borrarla.
           </AppText>
+          <Button
+            tone="ghost"
+            label="Ver todo el historial"
+            hint="Filtra por grupo, jugador o estado"
+            onPress={() => router.push('/historial')}
+            testID="open-history"
+          />
         </View>
       ) : null}
 

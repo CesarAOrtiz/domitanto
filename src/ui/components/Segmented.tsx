@@ -58,7 +58,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   option: {
     flexGrow: 1,
-    flexBasis: 64,
+    flexBasis: 'auto',
+    minWidth: 64,
     minHeight: touch.min,
     borderWidth: 2,
     borderRadius: radius.md,

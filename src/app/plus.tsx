@@ -16,6 +16,7 @@ const BENEFITS = [
   { icon: 'slash', text: 'Sin publicidad en ninguna pantalla.' },
   { icon: 'droplet', text: 'Tres temas de color: Malecón, Cacao y Flamboyán.' },
   { icon: 'image', text: 'Dos plantillas extra para compartir resultados: Pizarra y Carnaval.' },
+  { icon: 'bar-chart-2', text: 'Comparar a una persona o pareja entre dos meses, trimestres o años.' },
 ] as const;
 
 type Status = { kind: 'idle' } | { kind: 'busy' } | { kind: 'message'; text: string; tone: 'ok' | 'info' | 'error' };

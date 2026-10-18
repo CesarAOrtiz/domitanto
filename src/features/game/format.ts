@@ -24,7 +24,11 @@ export function whenLabel(timestamp: number, now = Date.now()): string {
   if (date.toDateString() === today.toDateString()) return `Hoy, ${time}`;
   const yesterday = new Date(now - 86_400_000);
   if (date.toDateString() === yesterday.toDateString()) return `Ayer, ${time}`;
-  return date.toLocaleDateString('es-DO', { day: 'numeric', month: 'short' });
+  return date.toLocaleDateString('es-DO', {
+    day: 'numeric',
+    month: 'short',
+    ...(date.getFullYear() === today.getFullYear() ? {} : { year: 'numeric' }),
+  });
 }
 
 export function modeLabel(state: GameState): string {

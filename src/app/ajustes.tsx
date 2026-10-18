@@ -68,8 +68,8 @@ export default function SettingsScreen() {
         <AppText variant="bodyStrong">{isPlus ? 'Plus activo' : 'Quitar anuncios y obtener Plus'}</AppText>
         <AppText variant="caption" muted style={styles.gap}>
           {isPlus
-            ? 'Sin publicidad, con temas y plantillas extra. Gracias por apoyar La Mesa.'
-            : 'Pago único: sin publicidad, tres temas de color y dos plantillas extra para compartir.'}
+            ? 'Sin publicidad, con temas, plantillas y comparación por periodos. Gracias por apoyar La Mesa.'
+            : 'Pago único: sin publicidad, tres temas de color, dos plantillas extra y comparación por periodos.'}
         </AppText>
         <Button
           style={styles.gapTop}

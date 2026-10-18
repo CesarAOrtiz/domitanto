@@ -48,9 +48,9 @@ Ver [`docs/decisiones.md`](docs/decisiones.md): modelo de datos, reglas de puntu
 
 Hecho en la etapa 1:
 
-- Partida rápida (equipos A/B provisionales, meta 200) y configuración opcional: parejas o individual de 2 a 4, meta 100/150/200 o personalizada (1–9999), nombres opcionales y capicúa como regla de la casa desactivada por defecto.
+- Partida rápida (equipos A/B provisionales, meta 200) y configuración opcional: parejas o individual de 2 a 4, meta 100/150/200 o personalizada (1–9999). Nombres opcionales. Sin bonificaciones automáticas: todo se suma a mano (el dominio admite reglas de la casa si se vuelven a ofrecer).
 - Una sola partida activa por instalación, garantizado también por un índice único en SQLite. Continuar o abandonar explícitamente.
-- Teclado propio de enteros, atajos 10/25/50 que solo rellenan, confirmación que nombra al destinatario («Anotar 47 a La visita»), «Mano sin puntos» como acción explícita, resumen «Fichas 47 + capicúa 25 = 72».
+- Teclado propio de enteros, atajos 10/25/50 que solo rellenan, confirmación que nombra al destinatario («Anotar 47 a La visita») y «Mano sin puntos» como acción explícita.
 - Cada operación se guarda en una transacción antes de mostrar éxito; si falla, el borrador se conserva y el reintento usa el mismo `commandId` sin duplicar.
 - Deshacer como operación compensatoria (no borra historial). El dominio ya implementa editar, reasignar, anular y la previsualización de consecuencias; su interfaz llega en la etapa 2.
 - Resultado con total real (212, no 200), revancha que crea una partida nueva y «Cambiar parejas» con el formulario precargado.

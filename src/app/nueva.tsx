@@ -241,61 +241,65 @@ export default function NewGame() {
         ))}
       </Section>
 
-      <View style={[styles.rules, { borderColor: colors.stroke, backgroundColor: colors.surface }]}>
-        <Pressable
-          onPress={() => setRulesOpen((o) => !o)}
-          accessibilityRole="button"
-          accessibilityState={{ expanded: rulesOpen }}
-          style={styles.rulesHead}
-        >
-          <View style={styles.flex}>
-            <AppText variant="bodyStrong">Reglas de la casa</AppText>
-            <AppText variant="caption" muted>
-              {enabledRules.length === 0
-                ? 'Ninguna activa · todo se suma a mano'
-                : enabledRules.map((b) => `${b.label} ${form.bonuses[b.code]?.value}`).join(' · ')}
-            </AppText>
-          </View>
-          <Feather name={rulesOpen ? 'chevron-up' : 'chevron-down'} size={22} color={colors.ink} />
-        </Pressable>
-        {rulesOpen
-          ? HOUSE_BONUSES.map((b) => {
-              const rule = form.bonuses[b.code]!;
-              return (
-                <View key={b.code} style={[styles.rule, { borderColor: colors.hairline }]}>
-                  <View style={styles.ruleRow}>
-                    <View style={styles.flex}>
-                      <AppText variant="bodyStrong">{b.label}</AppText>
-                      <AppText variant="caption" muted>
-                        Aparece como opción al anotar. Nunca se suma sola.
-                      </AppText>
+      {HOUSE_BONUSES.length > 0 ? (
+        <View style={[styles.rules, { borderColor: colors.stroke, backgroundColor: colors.surface }]}>
+          <Pressable
+            onPress={() => setRulesOpen((o) => !o)}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: rulesOpen }}
+            style={styles.rulesHead}
+          >
+            <View style={styles.flex}>
+              <AppText variant="bodyStrong">Reglas de la casa</AppText>
+              <AppText variant="caption" muted>
+                {enabledRules.length === 0
+                  ? 'Ninguna activa · todo se suma a mano'
+                  : enabledRules.map((b) => `${b.label} ${form.bonuses[b.code]?.value}`).join(' · ')}
+              </AppText>
+            </View>
+            <Feather name={rulesOpen ? 'chevron-up' : 'chevron-down'} size={22} color={colors.ink} />
+          </Pressable>
+          {rulesOpen
+            ? HOUSE_BONUSES.map((b) => {
+                const rule = form.bonuses[b.code]!;
+                return (
+                  <View key={b.code} style={[styles.rule, { borderColor: colors.hairline }]}>
+                    <View style={styles.ruleRow}>
+                      <View style={styles.flex}>
+                        <AppText variant="bodyStrong">{b.label}</AppText>
+                        <AppText variant="caption" muted>
+                          Aparece como opción al anotar. Nunca se suma sola.
+                        </AppText>
+                      </View>
+                      <Switch
+                        value={rule.enabled}
+                        accessibilityLabel={`Activar ${b.label}`}
+                        onValueChange={(enabled) =>
+                          update({ bonuses: { ...form.bonuses, [b.code]: { ...rule, enabled } } })
+                        }
+                        trackColor={{ true: colors.team[0], false: colors.hairline }}
+                      />
                     </View>
-                    <Switch
-                      value={rule.enabled}
-                      accessibilityLabel={`Activar ${b.label}`}
-                      onValueChange={(enabled) =>
-                        update({ bonuses: { ...form.bonuses, [b.code]: { ...rule, enabled } } })
-                      }
-                      trackColor={{ true: colors.team[0], false: colors.hairline }}
-                    />
+                    {rule.enabled ? (
+                      <Field
+                        label={`Valor de ${b.label.toLowerCase()}`}
+                        keyboardType="number-pad"
+                        maxLength={4}
+                        value={rule.value}
+                        onChangeText={(value) =>
+                          update({
+                            bonuses: { ...form.bonuses, [b.code]: { ...rule, value: value.replace(/\D/g, '') } },
+                          })
+                        }
+                        error={errors.bonuses?.[b.code]}
+                      />
+                    ) : null}
                   </View>
-                  {rule.enabled ? (
-                    <Field
-                      label={`Valor de ${b.label.toLowerCase()}`}
-                      keyboardType="number-pad"
-                      maxLength={4}
-                      value={rule.value}
-                      onChangeText={(value) =>
-                        update({ bonuses: { ...form.bonuses, [b.code]: { ...rule, value: value.replace(/\D/g, '') } } })
-                      }
-                      error={errors.bonuses?.[b.code]}
-                    />
-                  ) : null}
-                </View>
-              );
-            })
-          : null}
-      </View>
+                );
+              })
+            : null}
+        </View>
+      ) : null}
 
       {error ? <AppText color={colors.danger}>{error}</AppText> : null}
     </Screen>

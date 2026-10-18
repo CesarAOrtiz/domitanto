@@ -3,13 +3,16 @@ import {
   buildGame,
   computeOutcome,
   DomainError,
-  HOUSE_BONUSES,
   previewCommand,
   quickGameSetup,
+  type BonusRule,
   type GameCommand,
   type GameSetup,
   type GameState,
 } from '..';
+
+/** Regla de la casa solo para pruebas: la app no ofrece ninguna por ahora. */
+const TEST_BONUSES: readonly BonusRule[] = [{ code: 'capicua', label: 'Capicúa', value: 25, repeatable: false }];
 
 function harness(setup: GameSetup = quickGameSetup()) {
   let n = 0;
@@ -117,7 +120,7 @@ describe('puntuación (pruebas de aceptación de la especificación)', () => {
   });
 
   test('6. bonificación: 47 + capicúa 25 = 72, congelada en la partida', () => {
-    const rules = HOUSE_BONUSES.map((b) => ({ ...b }));
+    const rules = TEST_BONUSES.map((b) => ({ ...b }));
     const h = harness({ ...quickGameSetup(), bonuses: rules });
     const r = h.add(h.A, 47, ['capicua']);
     expect(r.outcome.totals[h.A]).toBe(72);
@@ -130,12 +133,12 @@ describe('puntuación (pruebas de aceptación de la especificación)', () => {
   test('bonificación desactivada o repetida se rechaza', () => {
     const h = harness();
     expect(() => h.add(h.A, 47, ['capicua'])).toThrow(/no está activa/);
-    const h2 = harness({ ...quickGameSetup(), bonuses: [...HOUSE_BONUSES] });
+    const h2 = harness({ ...quickGameSetup(), bonuses: [...TEST_BONUSES] });
     expect(() => h2.add(h2.A, 47, ['capicua', 'capicua'])).toThrow(/dos veces/);
   });
 
   test('apunte de bonificación independiente no cuenta como mano', () => {
-    const h = harness({ ...quickGameSetup(), bonuses: [...HOUSE_BONUSES] });
+    const h = harness({ ...quickGameSetup(), bonuses: [...TEST_BONUSES] });
     h.add(h.A, 30);
     const r = h.run({
       type: 'add_entry',

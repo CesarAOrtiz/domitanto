@@ -29,10 +29,12 @@ export interface GameSetup {
   sessionId?: string | null;
 }
 
-/** Bonificaciones de la casa conocidas. Todas desactivadas por defecto. */
-export const HOUSE_BONUSES: readonly BonusRule[] = [
-  { code: 'capicua', label: 'Capicúa', value: 25, repeatable: false },
-];
+/**
+ * Bonificaciones de la casa que se ofrecen al configurar una partida. Vacía por decisión
+ * de producto: todo se suma a mano. El dominio sigue admitiendo bonificaciones congeladas
+ * en la partida si se vuelven a ofrecer.
+ */
+export const HOUSE_BONUSES: readonly BonusRule[] = [];
 
 const SIDE_LETTERS = ['A', 'B', 'C', 'D'];
 const PAIR_NAMES = ['Equipo A', 'Equipo B'];

@@ -2,13 +2,16 @@
  * @jest-environment node
  */
 import { ActiveGameExistsError, GameService } from '../../application/gameService';
-import { HOUSE_BONUSES, quickGameSetup, type GameCommand } from '../../domain';
+import { quickGameSetup, type BonusRule, type GameCommand } from '../../domain';
 import { openTestDatabase, testDeps, type TestDriver } from '../../test/nodeSqlite';
 import { migrate, MIGRATIONS, MigrationError, currentSchemaVersion } from '../migrations';
 import { loadGame } from '../gameRepository';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
+/** Regla de la casa solo para pruebas: la app no ofrece ninguna por ahora. */
+const TEST_BONUSES: readonly BonusRule[] = [{ code: 'capicua', label: 'Capicúa', value: 25, repeatable: false }];
 
 async function setup(driver: TestDriver = openTestDatabase()) {
   await migrate(driver);
@@ -159,7 +162,7 @@ describe('servicio de partida sobre SQLite real', () => {
 
   test('6. bonificación persistida con su valor en la revisión', async () => {
     const { driver, service } = await setup();
-    const gameId = await service.createGame({ ...quickGameSetup(), bonuses: [...HOUSE_BONUSES] }, cmd());
+    const gameId = await service.createGame({ ...quickGameSetup(), bonuses: [...TEST_BONUSES] }, cmd());
     const { state } = await service.getGame(gameId);
     const A = state.sides[0]!.id;
     const r = await service.execute(gameId, hand(A, 47, cmd(), ['capicua']));
@@ -265,7 +268,7 @@ describe('servicio de partida sobre SQLite real', () => {
       {
         mode: 'pairs',
         target: 100,
-        bonuses: [...HOUSE_BONUSES],
+        bonuses: [...TEST_BONUSES],
         sides: [
           { displayName: 'Los del patio', participants: [{ displayName: 'César' }, { displayName: 'Luis' }] },
           { displayName: 'La visita', participants: [{ displayName: 'Ana' }, { displayName: 'José' }] },

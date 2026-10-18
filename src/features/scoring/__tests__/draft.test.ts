@@ -1,5 +1,8 @@
-import { HOUSE_BONUSES } from '../../../domain';
+import type { BonusRule } from '../../../domain';
 import { confirmLabel, draftReducer, emptyDraft, summarizeDraft, type DraftAction } from '../draft';
+
+/** Regla de la casa solo para pruebas: la app no ofrece ninguna por ahora. */
+const TEST_BONUSES: readonly BonusRule[] = [{ code: 'capicua', label: 'Capicúa', value: 25, repeatable: false }];
 
 const apply = (actions: DraftAction[], start = emptyDraft('A')) => actions.reduce(draftReducer, start);
 
@@ -48,7 +51,7 @@ describe('borrador de apunte', () => {
       { type: 'digit', digit: '7' },
       { type: 'toggle_bonus', code: 'capicua' },
     ]);
-    const s = summarizeDraft(d, [...HOUSE_BONUSES]);
+    const s = summarizeDraft(d, [...TEST_BONUSES]);
     expect(s.breakdown).toBe('Fichas 47 + capicúa 25 = 72');
     expect(s.total).toBe(72);
   });

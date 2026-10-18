@@ -1,11 +1,15 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import Feather from '@expo/vector-icons/Feather';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import Swipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 
 import { ActiveGameExistsError, type GameSnapshot } from '../application/gameService';
 import { useServices } from '../application/services';
+import type { SessionRow } from '../data/sessionRepository';
 import { quickGameSetup } from '../domain';
 import { durationLabel, scoreline, storageMessage, whenLabel } from '../features/game/format';
+import { plural } from '../features/people/format';
 import { hapticTap } from '../platform/haptics';
 import { AppText } from '../ui/components/AppText';
 import { Button } from '../ui/components/Button';
@@ -19,8 +23,9 @@ import { radius, space } from '../ui/tokens';
 
 export default function Home() {
   const { colors } = useTheme();
-  const { games, newCommandId } = useServices();
+  const { games, people, newCommandId } = useServices();
   const [active, setActive] = useState<GameSnapshot | null>(null);
+  const [session, setSession] = useState<SessionRow | null>(null);
   const [recent, setRecent] = useState<GameSnapshot[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -32,13 +37,14 @@ export default function Home() {
       const activeId = await games.activeGameId();
       setActive(activeId ? await games.getGame(activeId) : null);
       setRecent(await games.recentClosed(3));
+      setSession(await people.currentSession());
       setError(null);
     } catch (e) {
       setError(storageMessage(e));
     } finally {
       setLoaded(true);
     }
-  }, [games]);
+  }, [games, people]);
 
   useFocusEffect(
     useCallback(() => {
@@ -84,10 +90,30 @@ export default function Home() {
     );
   };
 
+  const removeGame = (snapshot: GameSnapshot, onCancel?: () => void) => {
+    Alert.alert('¿Borrar la partida?', 'Se borran el resultado y todas sus manos. No se puede deshacer.', [
+      { text: 'Cancelar', style: 'cancel', onPress: onCancel },
+      {
+        text: 'Borrar',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await games.deleteGame(snapshot.state.id);
+            await refresh();
+          } catch (e) {
+            setError(storageMessage(e));
+          }
+        },
+      },
+    ]);
+  };
+
   return (
     <Screen>
       <View style={styles.brand}>
-        <DominoMark top={6} bottom={6} size={16} horizontal />
+        <View>
+          <DominoMark top={6} bottom={6} size={16} horizontal />
+        </View>
         <View style={styles.flex}>
           <AppText variant="heading" accessibilityRole="header">
             La Mesa
@@ -132,25 +158,37 @@ export default function Home() {
             </View>
           </View>
           <AppText muted style={styles.heroCopy}>
-            Apunta cada mano en segundos. Se guarda en este teléfono, con o sin internet.
+            Apunta cada mano en segundos.
           </AppText>
-          <Button
-            testID="quick-game"
-            size="lg"
-            label="Partida rápida"
-            hint="Parejas · meta 200"
-            onPress={startQuick}
-            loading={busy}
-          />
-          <Button
-            tone="secondary"
-            label="Personalizar"
-            hint="Modo, meta, nombres y reglas"
-            onPress={() => router.push('/nueva')}
-            disabled={busy}
-          />
+          <View style={styles.heroActions}>
+            <Button
+              testID="quick-game"
+              size="lg"
+              label="Partida rápida"
+              hint="Parejas · meta 200"
+              onPress={startQuick}
+              loading={busy}
+            />
+            <Button
+              tone="secondary"
+              label="Personalizar"
+              hint="Modo, meta, nombres y reglas"
+              onPress={() => router.push('/nueva')}
+              disabled={busy}
+            />
+          </View>
         </Surface>
       )}
+
+      {session && session.gameCount > 1 ? (
+        <Button
+          tone="secondary"
+          label="Sesión de hoy"
+          hint={`${plural(session.gameCount, 'partida', 'partidas')} · quién va ganando`}
+          onPress={() => router.push({ pathname: '/sesion/[id]', params: { id: session.id } })}
+          testID="current-session"
+        />
+      ) : null}
 
       {recent.length > 0 ? (
         <View style={styles.section}>
@@ -158,16 +196,31 @@ export default function Home() {
             Recientes
           </AppText>
           {recent.map((g) => (
-            <RecentRow key={g.state.id} snapshot={g} />
+            <RecentRow key={g.state.id} snapshot={g} onDelete={(onCancel) => removeGame(g, onCancel)} />
           ))}
+          <AppText variant="caption" muted>
+            Desliza una partida para verla o borrarla.
+          </AppText>
         </View>
       ) : null}
 
-      <View style={styles.local}>
-        <View style={[styles.dot, { backgroundColor: colors.success }]} />
-        <AppText variant="caption" muted style={styles.flex}>
-          Tus partidas viven en este teléfono. Sin cuentas ni nube.
-        </AppText>
+      <View style={styles.links}>
+        <Button
+          style={styles.flex}
+          tone="ghost"
+          label="Grupos"
+          hint="Tu gente de siempre"
+          onPress={() => router.push('/grupos')}
+          testID="open-groups"
+        />
+        <Button
+          style={styles.flex}
+          tone="ghost"
+          label="Jugadores"
+          hint="Victorias de cada uno"
+          onPress={() => router.push('/jugadores')}
+          testID="open-players"
+        />
       </View>
     </Screen>
   );
@@ -222,28 +275,92 @@ function ActiveGameCard({
   );
 }
 
-function RecentRow({ snapshot }: { snapshot: GameSnapshot }) {
+function RecentRow({ snapshot, onDelete }: { snapshot: GameSnapshot; onDelete: (onCancel: () => void) => void }) {
   const { colors } = useTheme();
+  const swipe = useRef<SwipeableMethods>(null);
+  const open = () => {
+    swipe.current?.close();
+    router.push(`/resultado/${snapshot.state.id}`);
+  };
+  const remove = () => onDelete(() => swipe.current?.close());
   const { state, outcome } = snapshot;
   const winner = state.sides.find((s) => s.id === outcome.winnerSideId);
   const abandoned = state.status === 'abandoned';
   const duration = durationLabel(state.startedAt, state.endedAt);
   return (
-    <View style={[styles.recent, { backgroundColor: colors.surface, borderColor: colors.hairline }]}>
-      {winner ? <TeamBadge position={winner.position} size={26} /> : <DominoMark top={0} bottom={0} size={10} />}
-      <View style={styles.flex}>
-        <AppText variant="bodyStrong" numberOfLines={1}>
-          {abandoned ? 'Abandonada' : winner ? `Ganó ${winner.displayName}` : 'Sin resultado'}
+    <Swipeable
+      ref={swipe}
+      friction={2}
+      leftThreshold={48}
+      rightThreshold={48}
+      renderLeftActions={() => (
+        <SwipeAction
+          icon="eye"
+          label="Ver"
+          fill={colors.teamSoft[0] ?? colors.surface}
+          ink={colors.teamText[0] ?? colors.ink}
+          onPress={open}
+        />
+      )}
+      renderRightActions={() => (
+        <SwipeAction icon="trash-2" label="Borrar" fill={colors.dangerSoft} ink={colors.danger} onPress={remove} />
+      )}
+    >
+      <Pressable
+        testID={`recent-${state.id}`}
+        accessibilityRole="button"
+        accessibilityHint="Abre el resultado de la partida"
+        accessibilityActions={[{ name: 'activate' }, { name: 'delete', label: 'Borrar partida' }]}
+        onAccessibilityAction={(e) => (e.nativeEvent.actionName === 'delete' ? remove() : open())}
+        onPress={open}
+        style={({ pressed }) => [
+          styles.recent,
+          { backgroundColor: pressed ? colors.hairline : colors.surface, borderColor: colors.hairline },
+        ]}
+      >
+        {winner ? <TeamBadge position={winner.position} size={26} /> : <DominoMark top={0} bottom={0} size={10} />}
+        <View style={styles.flex}>
+          <AppText variant="bodyStrong" numberOfLines={1}>
+            {abandoned ? 'Abandonada' : winner ? `Ganó ${winner.displayName}` : 'Sin resultado'}
+          </AppText>
+          <AppText variant="caption" muted>
+            {whenLabel(state.startedAt)}
+            {duration ? ` · ${duration}` : ''}
+          </AppText>
+        </View>
+        <AppText variant="heading" tabular>
+          {scoreline(state, outcome)}
         </AppText>
-        <AppText variant="caption" muted>
-          {whenLabel(state.startedAt)}
-          {duration ? ` · ${duration}` : ''}
-        </AppText>
-      </View>
-      <AppText variant="heading" tabular>
-        {scoreline(state, outcome)}
+      </Pressable>
+    </Swipeable>
+  );
+}
+
+function SwipeAction({
+  icon,
+  label,
+  fill,
+  ink,
+  onPress,
+}: {
+  icon: 'eye' | 'trash-2';
+  label: string;
+  fill: string;
+  ink: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={[styles.swipeAction, { backgroundColor: fill, borderColor: ink }]}
+    >
+      <Feather name={icon} size={20} color={ink} />
+      <AppText variant="label" color={ink}>
+        {label}
       </AppText>
-    </View>
+    </Pressable>
   );
 }
 
@@ -253,6 +370,7 @@ const styles = StyleSheet.create({
   heroTop: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
   heroArt: { flexDirection: 'row', paddingRight: space.xs },
   heroCopy: { marginTop: space.sm, marginBottom: space.lg, maxWidth: 320 },
+  heroActions: { gap: space.md },
   section: { gap: space.sm },
   mini: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginVertical: space.md },
   miniSide: { flex: 1, minWidth: 130, borderRadius: radius.md, padding: space.md, gap: space.xs },
@@ -266,7 +384,15 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: space.md,
   },
-  local: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.sm },
-  dot: { width: 8, height: 8, borderRadius: 4 },
+  swipeAction: {
+    width: 88,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.xs,
+    borderWidth: 1.5,
+    borderRadius: radius.md,
+    marginHorizontal: space.xs,
+  },
+  links: { flexDirection: 'row', gap: space.sm },
   error: { borderWidth: 1.5, borderRadius: radius.md, padding: space.md },
 });

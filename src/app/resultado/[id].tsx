@@ -1,12 +1,14 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import { Alert, Animated, StyleSheet, View } from 'react-native';
 
 import type { GameSnapshot } from '../../application/gameService';
+import type { SessionOverview } from '../../application/peopleService';
 import { useServices } from '../../application/services';
 import { sideLetter } from '../../domain';
 import { durationLabel, modeLabel, storageMessage } from '../../features/game/format';
+import { recordLabel } from '../../features/people/format';
 import { AppText } from '../../ui/components/AppText';
 import { Button } from '../../ui/components/Button';
 import { DominoMark } from '../../ui/components/DominoMark';
@@ -20,16 +22,23 @@ import { radius, space } from '../../ui/tokens';
 export default function ResultScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors, reduceMotion } = useTheme();
-  const { games, newCommandId } = useServices();
+  const { games, people, newCommandId } = useServices();
   const [snapshot, setSnapshot] = useState<GameSnapshot | null>(null);
+  const [session, setSession] = useState<SessionOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const rematchCommand = useRef<string | null>(null);
   const [pop] = useState(() => new Animated.Value(reduceMotion ? 1 : 0.85));
 
   useEffect(() => {
-    games.getGame(id).then(setSnapshot, (e: unknown) => setError(storageMessage(e)));
-  }, [games, id]);
+    games.getGame(id).then(
+      (s) => {
+        setSnapshot(s);
+        if (s.state.sessionId) people.sessionOverview(s.state.sessionId).then(setSession, () => undefined);
+      },
+      (e: unknown) => setError(storageMessage(e)),
+    );
+  }, [games, people, id]);
 
   useEffect(() => {
     if (!snapshot || reduceMotion) return;
@@ -58,6 +67,24 @@ export default function ResultScreen() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const remove = () => {
+    Alert.alert('¿Borrar la partida?', 'Se borran el resultado y todas sus manos. No se puede deshacer.', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Borrar',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await games.deleteGame(state.id);
+            router.replace('/');
+          } catch (e) {
+            setError(storageMessage(e));
+          }
+        },
+      },
+    ]);
   };
 
   const facts = [
@@ -125,7 +152,9 @@ export default function ResultScreen() {
           </Surface>
         </Animated.View>
       ) : (
-        <AppText variant="title">Sin ganador</AppText>
+        <AppText variant="title" accessibilityRole="header">
+          {state.status === 'abandoned' ? 'Partida abandonada' : 'Sin ganador'}
+        </AppText>
       )}
 
       <View style={styles.table}>
@@ -161,13 +190,51 @@ export default function ResultScreen() {
         </AppText>
       </View>
 
+      {session && session.summary.games.length > 1 ? (
+        <SessionStrip overview={session} gameId={state.id} winnerKey={winner?.compositionKey ?? null} />
+      ) : null}
+
       <Button tone="ghost" label="Ver el apunte completo" onPress={() => router.replace(`/partida/${state.id}`)} />
+      <Button testID="delete-game" tone="danger" label="Borrar partida" onPress={remove} disabled={busy} />
       {error ? <AppText color={colors.danger}>{error}</AppText> : null}
     </Screen>
   );
 }
 
+/** «Partida 3 de la noche» y la cuenta de la pareja ganadora en esta sesión. */
+function SessionStrip({
+  overview,
+  gameId,
+  winnerKey,
+}: {
+  overview: SessionOverview;
+  gameId: string;
+  winnerKey: string | null;
+}) {
+  const { colors } = useTheme();
+  const number = overview.summary.games.find((g) => g.result.gameId === gameId)?.number;
+  const pair = winnerKey ? overview.summary.pairs.find((p) => p.compositionKey === winnerKey) : undefined;
+  return (
+    <View style={[styles.session, { borderColor: colors.hairline, backgroundColor: colors.surface }]}>
+      <AppText variant="bodyStrong">
+        Partida {number} de la sesión{overview.group ? ` · ${overview.group.name}` : ''}
+      </AppText>
+      {pair ? (
+        <AppText variant="caption" muted>
+          {pair.names.join(' y ')} en esta sesión: {recordLabel(pair).toLowerCase()}
+        </AppText>
+      ) : null}
+      <Button
+        tone="secondary"
+        label="Ver la sesión"
+        onPress={() => router.push({ pathname: '/sesion/[id]', params: { id: overview.session.id } })}
+      />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  session: { borderWidth: 1.5, borderRadius: radius.md, padding: space.md, gap: space.sm },
   flex: { flex: 1 },
   row: { flexDirection: 'row', gap: space.sm },
   winnerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space.md },

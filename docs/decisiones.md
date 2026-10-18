@@ -42,3 +42,13 @@ Las tablas comerciales (derechos de Plus, exposición y elegibilidad de anuncios
 - **Ajustes en SQLite** (tabla `app_settings`, clave `preferences`), validados con zod campo a campo: un valor dañado vuelve a su valor por defecto sin perder los demás. Se guarda primero y luego se notifica a la interfaz.
 - **Pantalla encendida** con `expo-keep-awake` solo mientras el modo mesa tiene el foco y la app está activa; se libera al salir o al pasar a segundo plano.
 - **Tamaño del marcador por cifras** (`scoreFontSize`): `adjustsFontSizeToFit` no existe en web y falla en Android con fuentes propias, así que el tamaño se calcula y `adjustsFontSizeToFit` queda solo como respaldo en iOS.
+
+## Etapa 3
+
+- **Nada obligatorio.** Jugadores, grupos y sesiones son opcionales: la partida rápida y los nombres vacíos siguen funcionando igual que antes.
+- **Jugadores sin pasos extra.** Al armar una partida, los nombres nuevos que se escriben se guardan como jugadores en la misma transacción que crea la partida (ajuste «Guardar nombres nuevos», activo por defecto). Los jugadores guardados aparecen como pastillas: un toque los sienta en el primer puesto libre. Un nombre escrito que coincide con uno guardado **no** se vincula solo (dos personas pueden llamarse José): se ofrece «Usar a José guardado» y, si no se toca, queda como invitado.
+- **Sesiones automáticas.** Cada partida se asigna a la sesión abierta si la anterior tuvo actividad hace menos de 3 horas (`SESSION_GAP_MS`) y no cambió el grupo; si no, se cierra la anterior y se abre otra. La revancha cae en la misma sesión.
+- **Grupos.** Lista local con integrantes. «Jugar con este grupo» ofrece solo a sus jugadores y marca la sesión con el grupo. Sus cifras cuentan las partidas donde todos los jugadores eran del grupo. Borrar un grupo no borra partidas ni jugadores.
+- **Estadísticas** (`src/domain/stats.ts`): puras, recalculadas desde `games.winner_side_id` y los participantes en cada consulta, así que siempre reflejan correcciones. Victoria = integrar el lado ganador de una partida terminada; abandonadas y activas no cuentan; cero partidas no se muestra como 0 %; toda cifra lleva su denominador («1 de 2»). Pareja exacta por `composition_key`.
+- **Guías.** Cada pantalla nueva muestra una tarjeta breve la primera vez; «Entendido» la cierra (se guarda en `guidesSeen`) y el botón «?» la vuelve a abrir.
+- **Migración 2:** solo índices (`game_participants.player_id`, `games.session_id`, `group_members.player_id`, `sessions.started_at`). Las tablas ya venían de la migración 1.

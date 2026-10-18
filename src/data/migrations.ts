@@ -110,6 +110,16 @@ CREATE TABLE app_settings (
 );
 `,
   },
+  {
+    version: 2,
+    name: 'indices_jugadores_y_sesiones',
+    sql: `
+CREATE INDEX game_participants_player ON game_participants(player_id);
+CREATE INDEX games_session ON games(session_id);
+CREATE INDEX group_members_player ON group_members(player_id);
+CREATE INDEX sessions_started ON sessions(started_at);
+`,
+  },
 ];
 
 export class MigrationError extends Error {

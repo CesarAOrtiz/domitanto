@@ -4,12 +4,21 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Alert, Pressable, StyleSheet, Switch, View } from 'react-native';
 
 import { ActiveGameExistsError } from '../application/gameService';
-import { useServices } from '../application/services';
+import { useServices, useSettings } from '../application/services';
+import type { Group, Player } from '../data/peopleRepository';
 import { HOUSE_BONUSES, sideLetter, TARGET_PRESETS } from '../domain';
 import { storageMessage } from '../features/game/format';
-import { defaultForm, formFromGame, validateForm, type SetupForm } from '../features/game/setupForm';
+import {
+  defaultForm,
+  formFromGame,
+  normalizeName,
+  seats,
+  validateForm,
+  type SetupForm,
+} from '../features/game/setupForm';
 import { AppText } from '../ui/components/AppText';
 import { Button } from '../ui/components/Button';
+import { Chip } from '../ui/components/Chip';
 import { Field } from '../ui/components/Field';
 import { IconButton } from '../ui/components/IconButton';
 import { Screen } from '../ui/components/Screen';
@@ -20,9 +29,13 @@ import { useTheme } from '../ui/theme';
 import { radius, space, touch } from '../ui/tokens';
 
 export default function NewGame() {
-  const { from } = useLocalSearchParams<{ from?: string }>();
+  const { from, grupo } = useLocalSearchParams<{ from?: string; grupo?: string }>();
   const { colors } = useTheme();
-  const { games, newCommandId } = useServices();
+  const { games, people, newCommandId } = useServices();
+  const [settings, updateSettings] = useSettings();
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [group, setGroup] = useState<Group | null>(null);
+  const [showAllPlayers, setShowAllPlayers] = useState(false);
   const [form, setForm] = useState<SetupForm>(defaultForm);
   const [customTarget, setCustomTarget] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
@@ -34,6 +47,11 @@ export default function NewGame() {
 
   useEffect(() => {
     games.activeGameId().then(setActiveId, () => undefined);
+    people.players().then(
+      (p) => setPlayers(p.filter((x) => x.archivedAt === null)),
+      () => undefined,
+    );
+    if (grupo) people.group(grupo).then(setGroup, () => undefined);
     if (from) {
       games.getGame(from).then(
         ({ state }) => {
@@ -44,19 +62,49 @@ export default function NewGame() {
         () => undefined,
       );
     }
-  }, [games, from]);
+  }, [games, people, from, grupo]);
 
   const update = (patch: Partial<SetupForm>) => {
     command.current = null;
     setForm((f) => ({ ...f, ...patch }));
   };
-  const setPlayer = (side: number, seat: number, name: string) => {
+  /** Escribir en un puesto lo desvincula del jugador guardado que tuviera. */
+  const setPlayer = (side: number, seat: number, name: string, playerId: string | null = null) => {
     const playerNames = form.playerNames.map((row) => [...row]);
+    const playerIds = form.playerIds.map((row) => [...row]);
     playerNames[side]![seat] = name;
-    update({ playerNames });
+    playerIds[side]![seat] = playerId;
+    update({ playerNames, playerIds });
   };
 
-  const { setup, errors } = validateForm(form);
+  const openSeats = seats(form);
+  const seatedIds = new Set(openSeats.map(([side, seat]) => form.playerIds[side]?.[seat]).filter(Boolean));
+  const savedNames = new Set(players.map((p) => normalizeName(p.displayName)));
+
+  /** Tocar un jugador lo sienta en el primer puesto libre; tocarlo otra vez lo levanta. */
+  const togglePlayer = (player: Player) => {
+    const taken = openSeats.find(([side, seat]) => form.playerIds[side]?.[seat] === player.id);
+    if (taken) return setPlayer(taken[0], taken[1], '');
+    const free = openSeats.find(
+      ([side, seat]) => !form.playerIds[side]?.[seat] && !form.playerNames[side]?.[seat]?.trim(),
+    );
+    if (free) setPlayer(free[0], free[1], player.displayName, player.id);
+  };
+  const hasFreeSeat = openSeats.some(
+    ([side, seat]) => !form.playerIds[side]?.[seat] && !form.playerNames[side]?.[seat]?.trim(),
+  );
+
+  /** Jugador guardado con el mismo nombre que lo escrito en un puesto sin vincular. */
+  const matchFor = (side: number, seat: number): Player | undefined => {
+    const typed = form.playerNames[side]?.[seat] ?? '';
+    if (form.playerIds[side]?.[seat] || !typed.trim()) return undefined;
+    return players.find((p) => !seatedIds.has(p.id) && normalizeName(p.displayName) === normalizeName(typed));
+  };
+
+  const groupMembers = group ? players.filter((p) => group.memberIds.includes(p.id)) : [];
+  const suggestions = group ? groupMembers : showAllPlayers ? players : players.slice(0, 8);
+
+  const { setup, errors } = validateForm(form, { savedNames, saveNewNames: settings.saveNewNames });
   const enabledRules = HOUSE_BONUSES.filter((b) => form.bonuses[b.code]?.enabled);
 
   const start = async () => {
@@ -66,7 +114,7 @@ export default function NewGame() {
     setBusy(true);
     setError(null);
     try {
-      const id = await games.createGame(setup, command.current);
+      const id = await games.createGame(setup, command.current, { groupId: group?.id ?? null });
       command.current = null;
       router.replace(`/partida/${id}`);
     } catch (e) {
@@ -123,9 +171,16 @@ export default function NewGame() {
           label="Cerrar"
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
         />
-        <AppText variant="title" accessibilityRole="header" style={styles.flex}>
-          Nueva partida
-        </AppText>
+        <View style={styles.flex}>
+          <AppText variant="title" accessibilityRole="header">
+            Nueva partida
+          </AppText>
+          {group ? (
+            <AppText variant="caption" muted>
+              Con {group.name}
+            </AppText>
+          ) : null}
+        </View>
       </View>
 
       {activeId ? (
@@ -194,6 +249,36 @@ export default function NewGame() {
       </Section>
 
       <Section title="Nombres" note="Opcionales. Puedes empezar sin escribir nada.">
+        {suggestions.length > 0 ? (
+          <View style={styles.saved}>
+            <AppText variant="caption" muted>
+              {group ? `Jugadores de ${group.name}.` : 'Jugadores guardados.'} Toca un nombre para sentarlo en el primer
+              puesto libre; tócalo otra vez para quitarlo.
+            </AppText>
+            <View style={styles.chips}>
+              {suggestions.map((p) => {
+                const seated = seatedIds.has(p.id);
+                return (
+                  <Chip
+                    key={p.id}
+                    label={p.displayName}
+                    selected={seated}
+                    icon={seated ? 'check' : undefined}
+                    disabled={!seated && !hasFreeSeat}
+                    onPress={() => togglePlayer(p)}
+                    accessibilityHint={seated ? 'Quitar de la partida' : 'Sentar en el primer puesto libre'}
+                  />
+                );
+              })}
+              {!group && players.length > 8 ? (
+                <Chip
+                  label={showAllPlayers ? 'Ver menos' : `Ver todos (${players.length})`}
+                  onPress={() => setShowAllPlayers((v) => !v)}
+                />
+              ) : null}
+            </View>
+          </View>
+        ) : null}
         {Array.from({ length: sideCount }, (_, i) => (
           <View key={i} style={[styles.sideBox, { borderColor: colors.hairline, backgroundColor: colors.teamSoft[i] }]}>
             <View style={styles.sideHead}>
@@ -217,29 +302,59 @@ export default function NewGame() {
                 />
                 <View style={styles.pair}>
                   {[0, 1].map((seat) => (
-                    <Field
-                      key={seat}
-                      label={`Jugador ${seat + 1}`}
-                      placeholder={`Jugador ${sideLetter(i)}${seat + 1}`}
-                      value={form.playerNames[i]?.[seat]}
-                      maxLength={40}
-                      onChangeText={(t) => setPlayer(i, seat, t)}
-                    />
+                    <View key={seat} style={styles.seat}>
+                      <Field
+                        label={`Jugador ${seat + 1}`}
+                        placeholder={`Jugador ${sideLetter(i)}${seat + 1}`}
+                        value={form.playerNames[i]?.[seat]}
+                        maxLength={40}
+                        accent={form.playerIds[i]?.[seat] ? colors.team[i] : undefined}
+                        onChangeText={(t) => setPlayer(i, seat, t)}
+                      />
+                      <SeatNote
+                        linked={!!form.playerIds[i]?.[seat]}
+                        match={matchFor(i, seat)}
+                        onUse={(p) => setPlayer(i, seat, p.displayName, p.id)}
+                      />
+                    </View>
                   ))}
                 </View>
               </>
             ) : (
-              <Field
-                label="Nombre"
-                placeholder={`Jugador ${i + 1}`}
-                value={form.playerNames[i]?.[0]}
-                maxLength={40}
-                onChangeText={(t) => setPlayer(i, 0, t)}
-              />
+              <View style={styles.seat}>
+                <Field
+                  label="Nombre"
+                  placeholder={`Jugador ${i + 1}`}
+                  value={form.playerNames[i]?.[0]}
+                  maxLength={40}
+                  accent={form.playerIds[i]?.[0] ? colors.team[i] : undefined}
+                  onChangeText={(t) => setPlayer(i, 0, t)}
+                />
+                <SeatNote
+                  linked={!!form.playerIds[i]?.[0]}
+                  match={matchFor(i, 0)}
+                  onUse={(p) => setPlayer(i, 0, p.displayName, p.id)}
+                />
+              </View>
             )}
           </View>
         ))}
       </Section>
+
+      <View style={styles.saveRow}>
+        <View style={styles.flex}>
+          <AppText variant="bodyStrong">Guardar nombres nuevos</AppText>
+          <AppText variant="caption" muted>
+            Así la app lleva las victorias de cada persona. Los puestos vacíos son invitados y no cuentan.
+          </AppText>
+        </View>
+        <Switch
+          value={settings.saveNewNames}
+          accessibilityLabel="Guardar nombres nuevos como jugadores"
+          onValueChange={(saveNewNames) => void updateSettings({ saveNewNames }).catch(() => undefined)}
+          trackColor={{ true: colors.team[0], false: colors.hairline }}
+        />
+      </View>
 
       {HOUSE_BONUSES.length > 0 ? (
         <View style={[styles.rules, { borderColor: colors.stroke, backgroundColor: colors.surface }]}>
@@ -306,6 +421,26 @@ export default function NewGame() {
   );
 }
 
+/** Debajo de un puesto: si está vinculado o si su nombre coincide con un jugador guardado. */
+function SeatNote({ linked, match, onUse }: { linked: boolean; match?: Player; onUse: (p: Player) => void }) {
+  if (linked) {
+    return (
+      <AppText variant="caption" muted>
+        Jugador guardado
+      </AppText>
+    );
+  }
+  if (!match) return null;
+  return (
+    <Chip
+      label={`Usar a ${match.displayName} guardado`}
+      icon="user-check"
+      onPress={() => onUse(match)}
+      accessibilityHint="Cuenta esta partida en sus estadísticas"
+    />
+  );
+}
+
 function Section({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
   return (
     <View style={styles.section}>
@@ -333,6 +468,10 @@ const styles = StyleSheet.create({
   sideBox: { borderWidth: 1.5, borderRadius: radius.lg, padding: space.md, gap: space.sm },
   sideHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   pair: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  seat: { flex: 1, minWidth: 140, gap: space.xs },
+  saved: { gap: space.sm },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  saveRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   rules: { borderWidth: 2, borderRadius: radius.lg, overflow: 'hidden' },
   rulesHead: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg, minHeight: touch.min },
   rule: { borderTopWidth: 1, padding: space.lg, gap: space.md },

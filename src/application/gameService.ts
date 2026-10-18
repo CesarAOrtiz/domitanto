@@ -10,8 +10,9 @@ import {
   type GameState,
   type Outcome,
 } from '../domain';
-import type { SqlDriver } from '../data/driver';
+import type { SqlDriver, SqlExecutor } from '../data/driver';
 import {
+  deleteGame,
   findActiveGameId,
   findOperation,
   insertGame,
@@ -22,6 +23,19 @@ import {
   updateGameHeader,
   type GameSummary,
 } from '../data/gameRepository';
+import { getPlayer, insertPlayer } from '../data/peopleRepository';
+import { closeSession, insertSession, latestSession, setSessionGroup } from '../data/sessionRepository';
+
+/**
+ * Si la partida anterior terminó hace menos de esto, la nueva se suma a la misma
+ * sesión (la «noche de juego»). Así las sesiones se arman solas, sin pasos extra.
+ */
+export const SESSION_GAP_MS = 3 * 60 * 60 * 1000;
+
+export interface CreateGameOptions {
+  /** Grupo con el que se juega («Jugar con este grupo»). */
+  groupId?: string | null;
+}
 
 export interface Clock {
   now(): number;
@@ -96,19 +110,66 @@ export class GameService {
     return snapshots;
   }
 
-  /** Crea una partida. Reintentar con el mismo commandId devuelve la misma partida. */
-  async createGame(setup: GameSetup, commandId: string): Promise<string> {
+  /**
+   * Crea una partida. Reintentar con el mismo commandId devuelve la misma partida.
+   * En la misma transacción guarda como jugadores los nombres marcados con `register`
+   * y asigna la sesión de la noche.
+   */
+  async createGame(setup: GameSetup, commandId: string, options: CreateGameOptions = {}): Promise<string> {
     return this.db.transaction(async (tx) => {
       const previous = await findOperation(tx, commandId);
       if (previous?.result) return previous.result;
       const active = await findActiveGameId(tx);
       if (active) throw new ActiveGameExistsError(active);
       const ctx = this.ctx();
-      const game = buildGame(setup, ctx);
+      const withPlayers = await this.registerPlayers(tx, setup, ctx.now);
+      const sessionId = await this.assignSession(tx, options.groupId ?? null, ctx.now);
+      const game = buildGame({ ...withPlayers, sessionId }, ctx);
       await insertGame(tx, game);
-      await insertGameOperation(tx, commandId, game.id, 'create_game', setup, ctx.now);
+      await insertGameOperation(tx, commandId, game.id, 'create_game', withPlayers, ctx.now);
       return game.id;
     });
+  }
+
+  /** Guarda los nombres nuevos como jugadores y congela el alias de los ya guardados. */
+  private async registerPlayers(tx: SqlExecutor, setup: GameSetup, now: number): Promise<GameSetup> {
+    const sides = [];
+    for (const side of setup.sides) {
+      const participants = [];
+      for (const p of side.participants) {
+        const name = (p.displayName ?? '').trim().replace(/\s+/g, ' ').slice(0, 40);
+        if (p.register && !p.playerId && name) {
+          const playerId = this.ids.newId();
+          await insertPlayer(tx, playerId, name, now);
+          participants.push({ playerId, displayName: name });
+        } else if (p.playerId && !name) {
+          // Sin alias escrito: se congela el alias actual del perfil.
+          const player = await getPlayer(tx, p.playerId);
+          participants.push({ playerId: p.playerId, displayName: player?.displayName });
+        } else {
+          participants.push({ playerId: p.playerId ?? null, displayName: p.displayName });
+        }
+      }
+      sides.push({ ...side, participants });
+    }
+    return { ...setup, sides };
+  }
+
+  /** Reutiliza la sesión reciente o abre otra si pasó mucho tiempo o cambió el grupo. */
+  private async assignSession(tx: SqlExecutor, groupId: string | null, now: number): Promise<string> {
+    const latest = await latestSession(tx);
+    if (latest) {
+      const recent = now - latest.lastActivityAt <= SESSION_GAP_MS;
+      const sameGroup = !groupId || !latest.groupId || latest.groupId === groupId;
+      if (recent && sameGroup && latest.endedAt === null) {
+        if (groupId && !latest.groupId) await setSessionGroup(tx, latest.id, groupId);
+        return latest.id;
+      }
+      await closeSession(tx, latest.id, latest.lastActivityAt);
+    }
+    const id = this.ids.newId();
+    await insertSession(tx, id, groupId, now);
+    return id;
   }
 
   async rematch(gameId: string, commandId: string): Promise<string> {
@@ -125,6 +186,16 @@ export class GameService {
       const now = this.clock.now();
       await updateGameHeader(tx, { id: gameId, status: 'abandoned', endedAt: now, revision: state.revision + 1 }, null);
       await insertGameOperation(tx, commandId, gameId, 'abandon_game', {}, now);
+    });
+  }
+
+  /** Borra una partida cerrada con todos sus apuntes. Una partida activa se abandona antes. */
+  async deleteGame(gameId: string): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const state = await loadGame(tx, gameId);
+      if (!state) return;
+      if (state.status === 'active') throw new Error('Termina o abandona la partida antes de borrarla.');
+      await deleteGame(tx, gameId);
     });
   }
 
